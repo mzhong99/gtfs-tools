@@ -1,4 +1,4 @@
-module tarediiran-industries.com/mta-gtfs-probe
+module tarediiran-industries.com/gtfs-backend
 
 go 1.23
 
