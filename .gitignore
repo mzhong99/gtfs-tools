@@ -1,5 +1,6 @@
 **/tags
 .ctags.d/
 vscode/
+
 **/*.swp
-mta-gtfs-probe
+build/
