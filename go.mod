@@ -1,4 +1,4 @@
-module tarediiran-industries.com/gtfs-backend
+module tarediiran-industries.com/gtfs-services
 
 go 1.23
 
