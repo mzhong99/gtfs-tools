@@ -1,10 +1,10 @@
 package ingest
 
 import (
-	"fmt"
-	"io"
 	"errors"
 	"flag"
+	"fmt"
+	"io"
 )
 
 type Config struct {
@@ -12,10 +12,10 @@ type Config struct {
 
 	// Input args - either can accept from zip or url (but not both)
 	ZipPath string
-	Url string
+	Url     string
 
 	// Output args - either can dry-run or write to a database connection
-	DryRun bool
+	DryRun             bool
 	DatabaseConnection string
 }
 
@@ -50,8 +50,8 @@ func ParseArgs(programName string, args []string, errOut io.Writer) (Config, err
 }
 
 func (cfg Config) Validate() error {
-	hasZipPath := cfg.ZipPath != "";
-	hasUrl := cfg.Url != "";
+	hasZipPath := cfg.ZipPath != ""
+	hasUrl := cfg.Url != ""
 	if hasZipPath == hasUrl {
 		return fmt.Errorf("Exactly one of --zip or --url must be specified.")
 	}
@@ -75,5 +75,5 @@ func Main(programName string, args []string, stdOut, errOut io.Writer) int {
 	}
 
 	fmt.Printf("+%v\n", cfg)
-	return 0
+	return Run(cfg)
 }
