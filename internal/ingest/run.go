@@ -84,5 +84,4 @@ func Run(cfg Config) int {
 
 	fmt.Printf("Extracted to %s\n", tempDir)
 	return 0
-
 }
