@@ -18,7 +18,7 @@ var GtfsRequiredFiles = []string{
 	"calendar_dates.txt",
 }
 
-func unzipToTempDir(zipPath string) (string, error) {
+func UnzipToTempDir(zipPath string) (string, error) {
 	dir, err := os.MkdirTemp("", "gtfs-ingest-*")
 	if err != nil {
 		return "", err
@@ -60,13 +60,13 @@ func unzipToTempDir(zipPath string) (string, error) {
 			panic(err)
 		}
 
-		bytesWritten, err := io.Copy(dstFile, fileInArchive)
+		_, err = io.Copy(dstFile, fileInArchive)
 		if err != nil {
 			panic(err)
 		}
-
-		fmt.Printf("Extracted %s -> %s (%d bytes)\n", file.Name, dstPath, bytesWritten)
 	}
+
+	fmt.Printf("Extracted %s -> %s\n", zipPath, dir)
 
 	return dir, nil
 }
@@ -76,20 +76,9 @@ func Run(cfg Config) int {
 		fmt.Println("NYI: Web download")
 	}
 
-	var zipPath string = cfg.ZipPath
-	extractDir, err := unzipToTempDir(zipPath)
-	if err != nil {
+	if err := LoadGtfsFromDirectory(cfg.Url, cfg.ZipPath, cfg.DatabaseConnection); err != nil {
 		panic(err)
 	}
 
-	if err := ValidateGtfsDirectory(extractDir); err != nil {
-		panic(err)
-	}
-
-	if err := LoadGtfsFromDirectory(extractDir, cfg.DatabaseConnection); err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Extracted to %s\n", extractDir)
 	return 0
 }

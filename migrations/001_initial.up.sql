@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS feed_version (
-    feed_id TEXT PRIMARY KEY,
+    feed_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     imported_at TIMESTAMPTZ NOT NULL,
     source_url TEXT,
-    source_etag TEXT
+    source_sha256 TEXT
 );
 
 CREATE TABLE IF NOT EXISTS agency (
