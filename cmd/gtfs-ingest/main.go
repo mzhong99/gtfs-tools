@@ -2,7 +2,8 @@ package main
 
 import (
 	"os"
-	"tarediiran-industries.com/gtfs-services/internal/ingest"
+
+	ingest "tarediiran-industries.com/gtfs-services/internal/ingest/gtfs_static"
 )
 
 func main() {
