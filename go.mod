@@ -3,6 +3,7 @@ module tarediiran-industries.com/gtfs-services
 go 1.24.0
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs v1.0.0
 	github.com/jackc/pgx/v5 v5.8.0
 	google.golang.org/protobuf v1.36.11

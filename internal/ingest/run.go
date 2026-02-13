@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 )
@@ -71,12 +72,48 @@ func UnzipToTempDir(zipPath string) (string, error) {
 	return dir, nil
 }
 
-func Run(cfg Config) int {
-	if cfg.Url != "" {
-		fmt.Println("NYI: Web download")
+func DownloadToTempFile(url string) (string, error) {
+	tmpFile, error := os.CreateTemp("", "gtfs-ingest-*.zip")
+	if error != nil {
+		return "", error
+	}
+	defer tmpFile.Close()
+
+	response, err := http.Get(url)
+	if err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("Failed to download %s: %w", url, err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("HTTP Error: status code %d", response.StatusCode)
 	}
 
-	if err := LoadGtfsFromDirectory(cfg.Url, cfg.ZipPath, cfg.DatabaseConnection); err != nil {
+	_, err = io.Copy(tmpFile, response.Body)
+	if err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("Failed to write downloaded file to temp location: %w", err)
+	}
+
+	fmt.Printf("Downloaded %s -> %s\n", url, tmpFile.Name())
+	return tmpFile.Name(), nil
+}
+
+func Run(cfg Config) int {
+	zipPath := ""
+	if cfg.Url != "" {
+		var err error
+		zipPath, err = DownloadToTempFile(cfg.Url)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		zipPath = cfg.ZipPath
+	}
+
+	if err := LoadGtfsFromDirectory(cfg.Url, zipPath, cfg.DatabaseConnection); err != nil {
 		panic(err)
 	}
 
