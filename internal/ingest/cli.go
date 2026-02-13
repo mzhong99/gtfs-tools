@@ -15,7 +15,7 @@ type Config struct {
 	Url     string
 
 	// Output args - either can dry-run or write to a database connection
-	DryRun             bool
+	DryRun             *bool
 	DatabaseConnection string
 }
 
@@ -35,7 +35,7 @@ func ParseArgs(programName string, args []string, errOut io.Writer) (Config, err
 	fs.StringVar(&cfg.ZipPath, "zip", "", "Path to zip file for offline ingest")
 	fs.StringVar(&cfg.Url, "url", "", "Path to GTFS URL for online ingest")
 
-	fs.BoolVar(&cfg.DryRun, "dry-run", false, "If specified, shows what would be ingested without performing any DB writes")
+	cfg.DryRun = fs.Bool("dry-run", false, "If specified, shows what would be ingested without performing any DB writes")
 	fs.StringVar(&cfg.DatabaseConnection, "database", "", "Path to target database")
 
 	if err := fs.Parse(args); err != nil {
@@ -53,12 +53,12 @@ func (cfg Config) Validate() error {
 	hasZipPath := cfg.ZipPath != ""
 	hasUrl := cfg.Url != ""
 	if hasZipPath == hasUrl {
-		return fmt.Errorf("Exactly one of --zip or --url must be specified.")
+		return fmt.Errorf("Exactly one of -zip or -url must be specified.")
 	}
 
 	hasDatabaseConnection := cfg.DatabaseConnection != ""
-	if hasDatabaseConnection == cfg.DryRun {
-		return fmt.Errorf("Exactly one of --dry-run or --database may be specified")
+	if hasDatabaseConnection == *cfg.DryRun {
+		return fmt.Errorf("Exactly one of -dry-run or -database may be specified")
 	}
 
 	return nil

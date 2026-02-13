@@ -24,3 +24,26 @@ build:
 clean:
 	rm -rf bin
 
+.PHONY: db-up db-down db-reset db-migrate-up db-migrate-down db-migrate-status
+
+db-up:
+	docker-compose up -d postgres
+	@echo "Waiting for postgres to be ready..."
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $$(docker-compose ps -q postgres))" = "healthy" ]; do \
+		sleep 0.2; \
+	done
+
+db-down:
+	docker-compose down -v
+
+db-reset: db-down db-up db-migrate-up
+	@echo "Database reset complete"
+
+db-migrate-up: db-up
+	migrate -verbose -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" up
+
+db-migrate-down:
+	migrate -verbose -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" down
+
+db-migrate-status:
+	migrate -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" version

@@ -77,11 +77,19 @@ func Run(cfg Config) int {
 	}
 
 	var zipPath string = cfg.ZipPath
-	tempDir, err := unzipToTempDir(zipPath)
+	extractDir, err := unzipToTempDir(zipPath)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Extracted to %s\n", tempDir)
+	if err := ValidateGtfsDirectory(extractDir); err != nil {
+		panic(err)
+	}
+
+	if err := LoadGtfsFromDirectory(extractDir, cfg.DatabaseConnection); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Extracted to %s\n", extractDir)
 	return 0
 }
