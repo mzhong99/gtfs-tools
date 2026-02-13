@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS stops (
 );
 
 CREATE TABLE IF NOT EXISTS stop_times (
+    stop_id TEXT,
     trip_id TEXT,
     arrival_time TEXT,
     departure_time TEXT,
