@@ -11,7 +11,10 @@ CREATE TABLE IF NOT EXISTS agency (
     agency_url TEXT,
     agency_timezone TEXT,
     agency_lang TEXT,
-    agency_phone TEXT
+    agency_phone TEXT,
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS routes (
@@ -24,7 +27,10 @@ CREATE TABLE IF NOT EXISTS routes (
     route_url TEXT,
     route_color CHAR(6),
     route_text_color CHAR(6),
-    route_sort_order INTEGER
+    route_sort_order INTEGER,
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS trips (
@@ -33,7 +39,10 @@ CREATE TABLE IF NOT EXISTS trips (
     service_id TEXT,
     trip_headsign TEXT,
     direction_id SMALLINT,
-    shape_id TEXT
+    shape_id TEXT,
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS stops (
@@ -42,7 +51,10 @@ CREATE TABLE IF NOT EXISTS stops (
     stop_lat DOUBLE PRECISION,
     stop_lon DOUBLE PRECISION,
     location_type SMALLINT,
-    parent_station TEXT
+    parent_station TEXT,
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS stop_times (
@@ -51,7 +63,10 @@ CREATE TABLE IF NOT EXISTS stop_times (
     arrival_time TEXT,
     departure_time TEXT,
     stop_sequence INTEGER,
-    PRIMARY KEY (trip_id, stop_sequence)
+    PRIMARY KEY (trip_id, stop_sequence),
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS calendar (
@@ -64,14 +79,20 @@ CREATE TABLE IF NOT EXISTS calendar (
     saturday BOOLEAN,
     sunday BOOLEAN,
     start_date DATE,
-    end_date DATE
+    end_date DATE,
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS calendar_dates (
     service_id TEXT,
     date DATE,
     exception_type SMALLINT,
-    PRIMARY KEY (service_id, date)
+    PRIMARY KEY (service_id, date),
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS shapes (
@@ -80,7 +101,10 @@ CREATE TABLE IF NOT EXISTS shapes (
     shape_pt_lon DOUBLE PRECISION,
     shape_pt_sequence INTEGER,
     shape_dist_traveled DOUBLE PRECISION,
-    PRIMARY KEY (shape_id, shape_pt_sequence)
+    PRIMARY KEY (shape_id, shape_pt_sequence),
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );
 
 CREATE TABLE IF NOT EXISTS transfers (
@@ -88,5 +112,8 @@ CREATE TABLE IF NOT EXISTS transfers (
     to_stop_id TEXT,
     transfer_type SMALLINT,
     min_transfer_time INTEGER,
-    PRIMARY KEY (from_stop_id, to_stop_id)
+    PRIMARY KEY (from_stop_id, to_stop_id),
+
+    feed_id BIGINT,
+    foreign key (feed_id) references feed_version(feed_id)
 );

@@ -42,7 +42,7 @@ var FileTableMapping = []FileTableEntry{
 	{FileName: "transfers.txt", TableName: "transfers", Required: false, Loader: loadTransfers},
 }
 
-func ReadCSVAsMapSlice(filePath string) ([]map[string]string, error) {
+func ReadCSVAsMapRows(filePath string) ([]map[string]string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func ReadCSVAsMapSlice(filePath string) ([]map[string]string, error) {
 	return records, nil
 }
 
-func printSlices(slice []map[string]string) {
+func printRows(slice []map[string]string) {
 	js, err := json.MarshalIndent(slice, "", "  ")
 	if err != nil {
 		panic(err)
@@ -104,13 +104,14 @@ func buildInsertQuery(tableName string, record map[string]string) (string, []any
 
 func (ingestor *Ingestor) loadGeneric(filePath string, tableName string) error {
 	fmt.Printf("Loading %s from %s\n", tableName, filePath)
-	slices, err := ReadCSVAsMapSlice(filePath)
+	rows, err := ReadCSVAsMapRows(filePath)
 	if err != nil {
 		return err
 	}
 
-	for _, slice := range slices {
-		query, values := buildInsertQuery(tableName, slice)
+	for _, row := range rows {
+		row["feed_id"] = fmt.Sprintf("%d", ingestor.feedId)
+		query, values := buildInsertQuery(tableName, row)
 		_, err := ingestor.db.ExecContext(ingestor.ctx, query, values...)
 		if err != nil {
 			return err
@@ -137,13 +138,60 @@ func ReadCSVForColumnNames(filePath string) ([]string, error) {
 	return headers, nil
 }
 
+func CreateTempCSVWithFeedId(filePath string, feedId int) (string, error) {
+	rows, err := ReadCSVAsMapRows(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	tempFile, err := os.CreateTemp("", "gtfs-ingest-*.csv")
+	if err != nil {
+		return "", err
+	}
+	defer tempFile.Close()
+
+	writer := csv.NewWriter(tempFile)
+	defer writer.Flush()
+
+	if len(rows) == 0 {
+		return "", fmt.Errorf("CSV file has no data rows")
+	}
+
+	// Write headers first
+	headers, err := ReadCSVForColumnNames(filePath)
+	if err != nil {
+		return "", err
+	}
+	headers = append(headers, "feed_id")
+	if err := writer.Write(headers); err != nil {
+		return "", err
+	}
+
+	// Write each row with feed_id prepended
+	for _, row := range rows {
+		row["feed_id"] = fmt.Sprintf("%d", feedId)
+		rowStr := make([]string, 0, len(headers))
+		for _, header := range headers {
+			rowStr = append(rowStr, row[header])
+		}
+		if err := writer.Write(rowStr); err != nil {
+			return "", err
+		}
+	}
+
+	return tempFile.Name(), nil
+}
+
 func (ingestor *Ingestor) loadGenericCopy(filePath string, tableName string) error {
-	columns, err := ReadCSVForColumnNames(filePath)
+	fmt.Printf("Loading %s from %s\n", tableName, filePath)
+	tempPath, err := CreateTempCSVWithFeedId(filePath, ingestor.feedId)
+
+	columns, err := ReadCSVForColumnNames(tempPath)
 	if err != nil {
 		return err
 	}
 
-	_, err = ingestor.db.(db.CopyCapable).CopyFrom(ingestor.ctx, tableName, columns, filePath)
+	_, err = ingestor.db.(db.CopyCapable).CopyFrom(ingestor.ctx, tableName, columns, tempPath)
 	return err
 }
 
