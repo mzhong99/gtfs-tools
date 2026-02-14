@@ -1,11 +1,23 @@
 package gtfs_rt
 
 import (
-	"fmt"
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func Run(cfg Config) int {
-	fmt.Printf("Running GTFS-RT ingest with config: %+v\n", cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	watcher, err := NewGtfsRtWatcher(ctx, cfg.Urls, cfg.DatabaseConnection, 1.0)
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+
+	watcher.Watch(ctx)
 
 	return 0
 }
