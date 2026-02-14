@@ -10,19 +10,21 @@ LDFLAGS := \
   -X $(PKG_VERSION).GitCommit=$(COMMIT)
 
 BINS := \
-    gtfs-ingest
+    gtfs-ingest \
+    gtfs-rt-ingest
 
 all: build
 
 build:
 	@mkdir -p bin
 	@for b in $(BINS); do \
-		echo "→ building $$b"; \
+		echo "[BUILD] $$b"; \
 		go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$$b ./cmd/$$b ; \
 	done
 
 clean:
-	rm -rf bin
+	@echo [CLEAN] bin
+	@rm -rf bin
 
 .PHONY: db-up db-down db-reset db-migrate-up db-migrate-down db-migrate-status
 

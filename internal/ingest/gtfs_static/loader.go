@@ -1,4 +1,4 @@
-package ingest
+package gtfs_static
 
 import (
 	"context"
