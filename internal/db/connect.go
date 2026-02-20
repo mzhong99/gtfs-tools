@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -107,6 +108,20 @@ func (db *Database) CopyFromCSVFile(ctx context.Context, table string, columns [
 		return 0, fmt.Errorf("failed to copy from CSV file: %w", err)
 	}
 	return res.RowsAffected(), nil
+}
+
+func (db *Database) CopyFromSlice(ctx context.Context, table string, columns []string, size int, producer func(i int) ([]any, error)) (int64, error) {
+	conn, err := db.pool.Acquire(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to acquire connection from pool: %w", err)
+	}
+	defer conn.Release()
+
+	res, err := conn.Conn().CopyFrom(ctx, pgx.Identifier{table}, columns, pgx.CopyFromSlice(size, producer))
+	if err != nil {
+		return 0, fmt.Errorf("failed to copy from CSV file: %w", err)
+	}
+	return res, nil
 }
 
 func (db *Database) CopyFrom(ctx context.Context, table string, columns []string, filePath string) (int64, error) {

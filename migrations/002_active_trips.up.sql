@@ -1,3 +1,8 @@
+CREATE TABLE IF NOT EXISTS feed_snapshots (
+    snapshot_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Table is appended data from GTFS-RT feed, which is a snapshot of all active trips at a given time.
 -- This is used to determine where each train is at a given time, and what trips are associated with it.
 --
@@ -8,24 +13,27 @@
 -- us to uniquely identify a train by the combination of those three fields.
 CREATE TABLE IF NOT EXISTS trip_update_events (
     -- Used to create 1:N relationship with trip_update_stop_time_events
-    trip_update_event_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
     trip_id TEXT,           -- What trip you're taking
     start_date TEXT,        -- Date at which trip was started
     start_time TEXT,        -- Time of day at which trip was started
     direction_id SMALLINT,
+    snapshot_id BIGINT,
 
-    insertion_time TIMESTAMP NOT NULL DEFAULT NOW()
+    insertion_time TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT snapshot_id
+        FOREIGN KEY (snapshot_id) REFERENCES feed_snapshots(snapshot_id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS trip_update_stop_time_events (
     stop_id TEXT,
-    arrival_time TEXT,
-    departure_time TEXT,
-    trip_update_event_id BIGINT,
+    arrival_time BIGINT,
+    departure_time BIGINT,
+    snapshot_id BIGINT,
 
-    CONSTRAINT trip_update_event_id
-        FOREIGN KEY (trip_update_event_id) REFERENCES trip_update_events(trip_update_event_id)
+    CONSTRAINT snapshot_id
+        FOREIGN KEY (snapshot_id) REFERENCES feed_snapshots(snapshot_id)
         ON DELETE CASCADE
 );
 
