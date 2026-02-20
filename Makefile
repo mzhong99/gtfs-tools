@@ -22,6 +22,9 @@ build:
 		go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$$b ./cmd/$$b ; \
 	done
 
+format:
+	go fmt ./...
+
 clean:
 	@echo [CLEAN] bin
 	@rm -rf bin
