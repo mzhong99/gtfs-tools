@@ -55,6 +55,7 @@ func (db *Database) Close() error {
 	if db == nil || db.db == nil {
 		return nil
 	}
+	fmt.Println("DB closed.")
 	return db.db.Close()
 }
 

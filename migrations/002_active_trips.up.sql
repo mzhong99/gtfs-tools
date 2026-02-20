@@ -1,0 +1,38 @@
+-- Table is appended data from GTFS-RT feed, which is a snapshot of all active trips at a given time.
+-- This is used to determine where each train is at a given time, and what trips are associated with it.
+--
+-- Data is appended with an insertion time so that we can prune old data after a certain amount of time
+-- has passed (e.g. 24 hours).
+--
+-- Ah... the start date, time, and trip id shouldn't ever change for a given train. So that would allow
+-- us to uniquely identify a train by the combination of those three fields.
+CREATE TABLE IF NOT EXISTS trip_update_events (
+    -- Used to create 1:N relationship with trip_update_stop_time_events
+    trip_update_event_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    trip_id TEXT,           -- What trip you're taking
+    start_date TEXT,        -- Date at which trip was started
+    start_time TEXT,        -- Time of day at which trip was started
+    direction_id SMALLINT,
+
+    insertion_time TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS trip_update_stop_time_events (
+    stop_id TEXT,
+    arrival_time TEXT,
+    departure_time TEXT,
+    trip_update_event_id BIGINT,
+
+    CONSTRAINT trip_update_event_id
+        FOREIGN KEY (trip_update_event_id) REFERENCES trip_update_events(trip_update_event_id)
+        ON DELETE CASCADE
+);
+
+-- Need to decide how best to model trains and associated trips - I want to be able to easily query
+-- to ask where every train is at a given time, and what trips are associated with it.
+
+-- Need:
+-- * Representation per train
+-- * Representation of one route
+-- * Representation of one station

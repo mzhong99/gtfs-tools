@@ -2,6 +2,7 @@ package gtfs_rt
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,7 @@ func Run(cfg Config) int {
 	defer watcher.Close()
 
 	watcher.Watch(ctx)
+	fmt.Println("Finished.")
 
 	return 0
 }
