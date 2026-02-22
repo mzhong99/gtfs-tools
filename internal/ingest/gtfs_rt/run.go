@@ -12,7 +12,7 @@ func Run(cfg Config) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	watcher, err := NewGtfsRtWatcher(ctx, cfg.Urls, cfg.DatabaseConnection, 1.0)
+	watcher, err := NewGtfsRtWatcher(ctx, cfg.TelemetryAddr, cfg.Urls, cfg.DatabaseConnection, 1.0)
 	if err != nil {
 		panic(err)
 	}

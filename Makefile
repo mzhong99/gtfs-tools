@@ -29,22 +29,26 @@ clean:
 	@echo [CLEAN] bin
 	@rm -rf bin
 
-.PHONY: db-up db-down db-reset db-migrate-up db-migrate-down db-migrate-status
+.PHONY: infra-up infra-down db-reset db-migrate-up db-migrate-down db-migrate-status
 
-db-up:
-	docker-compose up -d postgres
+infra-up:
+	docker-compose up -d postgres prometheus
 	@echo "Waiting for postgres to be ready..."
 	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $$(docker-compose ps -q postgres))" = "healthy" ]; do \
 		sleep 0.2; \
 	done
+	@echo "Waiting for prometheus to be ready..."
+	@until curl -fsS http://localhost:9090/-/ready >/dev/null; do \
+		sleep 0.2; \
+	done
 
-db-down:
+infra-down:
 	docker-compose down -v
 
-db-reset: db-down db-up db-migrate-up
+db-reset: infra-down infra-up db-migrate-up
 	@echo "Database reset complete"
 
-db-migrate-up: db-up
+db-migrate-up: infra-up
 	migrate -verbose -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" up
 
 db-migrate-down:

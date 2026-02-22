@@ -12,3 +12,4 @@ urls = [
 ]
 
 database = "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db"
+telemetry = "0.0.0.0:9091"

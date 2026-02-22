@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 3s
+
+scrape_configs:
+  - job_name: "gtfs-rt-ingest"
+    static_configs:
+      - targets: ["host.docker.internal:9091"]

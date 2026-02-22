@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs"
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/protobuf/proto"
 	"tarediiran-industries.com/gtfs-services/internal/common"
 	database "tarediiran-industries.com/gtfs-services/internal/db"
@@ -70,19 +70,27 @@ type GtfsRtWatcher struct {
 	snapshotId int64
 	tuBuffer   []TripUpdateRecord
 	stuBuffer  []StopTimeUpdateRecord
+
+	metrics   *common.Metrics
+	telemetry *common.TelemetryServer
 }
 
-func printProtobuf(message proto.Message) {
-	options := protojson.MarshalOptions{Multiline: true}
-	jsonBytes, _ := options.Marshal(message)
-	fmt.Println(string(jsonBytes))
-}
+func NewGtfsRtWatcher(
+	ctx context.Context,
+	telemetryAddr string,
+	urls []string,
+	domainStringName string,
+	intervalSec float64,
+) (*GtfsRtWatcher, error) {
 
-func NewGtfsRtWatcher(ctx context.Context, urls []string, domainStringName string, intervalSec float64) (*GtfsRtWatcher, error) {
 	db, err := database.NewDatabaseConnection(ctx, domainStringName)
 	if err != nil {
 		return nil, err
 	}
+
+	telemetry := common.NewTelemetryServer(telemetryAddr)
+	telemetry.Start()
+	metrics := common.NewMetrics(telemetry.GetRegistry())
 
 	return &GtfsRtWatcher{
 		Urls:      urls,
@@ -90,6 +98,8 @@ func NewGtfsRtWatcher(ctx context.Context, urls []string, domainStringName strin
 		Client:    &http.Client{},
 		ticker:    time.NewTicker(time.Duration(intervalSec) * time.Second),
 		stuBuffer: make([]StopTimeUpdateRecord, 0, 2048),
+		telemetry: telemetry,
+		metrics:   metrics,
 	}, nil
 }
 
@@ -99,16 +109,23 @@ func (watcher *GtfsRtWatcher) SampleEndpoint(ctx context.Context, url string) (*
 		return nil, err
 	}
 
+	ttfbTimer := prometheus.NewTimer(watcher.metrics.HttpTTFBSeconds.WithLabelValues(url))
 	resp, err := watcher.Client.Do(req)
+	ttfbTimer.ObserveDuration()
+
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	bodyReadTimer := prometheus.NewTimer(watcher.metrics.HttpReadBodySeconds.WithLabelValues(url))
 	body, err := io.ReadAll(resp.Body)
+	bodyReadTimer.ObserveDuration()
 	if err != nil {
 		return nil, err
 	}
+
+	watcher.metrics.HttpBytesTotal.WithLabelValues(url).Add(float64(len(body)))
 
 	feedMessage := &gtfs.FeedMessage{}
 	err = proto.Unmarshal(body, feedMessage)
@@ -239,6 +256,7 @@ func (watcher *GtfsRtWatcher) SampleEndpoints(ctx context.Context) error {
 	for _, url := range watcher.Urls {
 		feedMessage, err := watcher.SampleEndpoint(ctx, url)
 		if err != nil {
+			watcher.metrics.HttpErrorsTotal.WithLabelValues(url).Add(1)
 			return fmt.Errorf("Failed to sample GTFS-RT feed from URL %s: %w", url, err)
 		}
 
@@ -269,5 +287,6 @@ func (watcher *GtfsRtWatcher) Watch(ctx context.Context) error {
 
 func (watcher *GtfsRtWatcher) Close() error {
 	watcher.ticker.Stop()
+	watcher.telemetry.Stop()
 	return watcher.Db.Close()
 }

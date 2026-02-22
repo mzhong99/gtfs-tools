@@ -12,6 +12,7 @@ import (
 type ConfigFile struct {
 	Urls               []string `toml:"urls"`
 	DatabaseConnection string   `toml:"database"`
+	TelemetryAddr      string   `toml:"telemetry"`
 }
 
 type Config struct {
@@ -19,6 +20,7 @@ type Config struct {
 	TomlConfigPath     string
 	Urls               []string
 	DatabaseConnection string
+	TelemetryAddr      string
 }
 
 func LoadConfigFromToml(path string) (ConfigFile, error) {
@@ -63,6 +65,7 @@ func ParseArgs(programName string, args []string, errOut io.Writer) (Config, err
 
 		cfg.Urls = tomlCfg.Urls
 		cfg.DatabaseConnection = tomlCfg.DatabaseConnection
+		cfg.TelemetryAddr = tomlCfg.TelemetryAddr
 	}
 
 	if err := cfg.Validate(); err != nil {
