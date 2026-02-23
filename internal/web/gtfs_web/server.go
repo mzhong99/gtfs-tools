@@ -46,6 +46,7 @@ func NewGtfsWebServer(ctx context.Context, listenAddr string, databaseUrl string
 		http.Redirect(writer, request, "/trains", http.StatusFound)
 	})
 	server.router.Get("/trains", server.handleTrainsPage)
+	server.router.Get("/trains/partial", server.handleTrainsPartial)
 
 	return server, nil
 }
