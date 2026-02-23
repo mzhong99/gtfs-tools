@@ -11,7 +11,8 @@ LDFLAGS := \
 
 BINS := \
     gtfs-ingest \
-    gtfs-rt-ingest
+    gtfs-rt-ingest \
+    gtfs-web
 
 all: build
 

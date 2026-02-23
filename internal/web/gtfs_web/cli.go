@@ -1,4 +1,4 @@
-package gtfs_rt
+package gtfs_web
 
 import (
 	"flag"
@@ -10,18 +10,15 @@ import (
 )
 
 type ConfigFile struct {
-	Urls               []string `toml:"urls"`
-	DatabaseConnection string   `toml:"database"`
-	TelemetryAddr      string   `toml:"telemetry"`
+	DatabaseConnection string `toml:"database"`
+	ListenAddress      string `toml:"listen_address"`
 }
-
 type Config struct {
 	Version        bool
 	TomlConfigPath string
 
-	Urls               []string
 	DatabaseConnection string
-	TelemetryAddr      string
+	ListenAddress      string
 }
 
 func LoadConfigFromToml(path string) (ConfigFile, error) {
@@ -64,26 +61,11 @@ func ParseArgs(programName string, args []string, errOut io.Writer) (Config, err
 			return Config{}, fmt.Errorf("LoadConfigFromToml: %w", err)
 		}
 
-		cfg.Urls = tomlCfg.Urls
 		cfg.DatabaseConnection = tomlCfg.DatabaseConnection
-		cfg.TelemetryAddr = tomlCfg.TelemetryAddr
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return Config{}, err
+		cfg.ListenAddress = tomlCfg.ListenAddress
 	}
 
 	return cfg, nil
-}
-
-func (cfg Config) Validate() error {
-	if len(cfg.Urls) == 0 {
-		return fmt.Errorf("Need at least one URL to parse real-time feed")
-	}
-	if cfg.DatabaseConnection == "" {
-		return fmt.Errorf("Missing required argument: database")
-	}
-	return nil
 }
 
 func Main(programName string, args []string, out, errOut io.Writer) int {

@@ -1,0 +1,36 @@
+{{define "trains_table.html"}}
+<div class="p-3 border-b border-zinc-800 flex items-center justify-between">
+  <div class="text-sm text-zinc-300">
+    Showing route: <span class="font-semibold">{{if .SelectedRoute}}{{.SelectedRoute}}{{else}}ALL{{end}}</span>
+  </div>
+  <div class="text-xs text-zinc-500">Updated: {{.UpdatedAt}}</div>
+</div>
+
+<table class="w-full text-sm">
+  <thead class="text-zinc-400">
+    <tr class="border-b border-zinc-800">
+      <th class="text-left px-3 py-2">Route</th>
+      <th class="text-left px-3 py-2">Dir</th>
+      <th class="text-left px-3 py-2">Trip</th>
+      <th class="text-left px-3 py-2">Last seen</th>
+      <th class="text-left px-3 py-2">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{if not .Rows}}
+      <tr>
+        <td class="px-3 py-3 text-zinc-500" colspan="5">No trains.</td>
+      </tr>
+    {{end}}
+    {{range .Rows}}
+      <tr class="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+        <td class="px-3 py-2 font-semibold">{{.Route}}</td>
+        <td class="px-3 py-2">{{.Direction}}</td>
+        <td class="px-3 py-2 font-mono text-xs">{{.TripID}}</td>
+        <td class="px-3 py-2 text-zinc-300">{{.LastSeen}}</td>
+        <td class="px-3 py-2 text-zinc-300">{{.Status}}</td>
+      </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}

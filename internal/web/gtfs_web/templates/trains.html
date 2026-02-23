@@ -1,0 +1,35 @@
+{{define "content"}}
+<div class="flex items-center justify-between gap-3 mb-4">
+  <div>
+    <h1 class="text-2xl font-semibold">Trains</h1>
+    <div class="text-sm text-zinc-400">Mock data (UI-first)</div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <label class="text-sm text-zinc-300">Route</label>
+    <select
+      id="route"
+      name="route"
+      class="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm"
+      hx-get="/trains/partial"
+      hx-target="#trains_table"
+      hx-trigger="change"
+      hx-include="#route"
+    >
+      {{range .Routes}}
+        <option value="{{.}}" {{if eq $.SelectedRoute .}}selected{{end}}>{{.}}</option>
+      {{end}}
+    </select>
+  </div>
+</div>
+
+<div
+  id="trains_table"
+  hx-get="/trains/partial?route={{.SelectedRoute}}"
+  hx-trigger="load, every {{.PollSeconds}}s"
+  hx-swap="innerHTML"
+  class="rounded-xl border border-zinc-800 bg-zinc-900/30"
+>
+  <div class="p-4 text-zinc-400 text-sm">Loading…</div>
+</div>
+{{end}}
