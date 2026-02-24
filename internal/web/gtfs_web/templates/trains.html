@@ -25,7 +25,8 @@
 
 <div
   id="trains_table"
-  hx-get="/trains/partial?route={{.SelectedRoute}}"
+  hx-get="/trains/partial"
+  hx-include="#route"
   hx-trigger="load, every {{.PollSeconds}}s"
   hx-swap="innerHTML"
   class="rounded-xl border border-zinc-800 bg-zinc-900/30"

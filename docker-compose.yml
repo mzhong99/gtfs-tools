@@ -2,12 +2,12 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: gtfs-postgres
+    profiles: ["infra"]
+    network_mode: host
     environment:
       POSTGRES_USER: gtfs
       POSTGRES_PASSWORD: gtfs_dev_password
       POSTGRES_DB: gtfs_db
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,12 +18,37 @@ services:
   prometheus:
     image: prom/prometheus:v3.5.0
     container_name: prometheus
+    profiles: ["infra"]
     network_mode: host
     volumes:
       -  ./config/prometheus.yml:/etc/prometheus/prometheus.yml:Z
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    
+  gtfs-rt-ingest:
+    image: gtfs-app:dev
+    container_name: gtfs-rt-ingest
+    profiles: ["app", "infra"]
+    network_mode: host
+    command: ["/app/bin/gtfs-rt-ingest", "-toml", "/app/config/gtfs-rt-ingest.dev.toml"]
+    restart: unless-stopped
+    init: true
+  gtfs-ingest:
+    image: gtfs-app:dev
+    container_name: gtfs-ingest
+    profiles: ["app", "infra"]
+    network_mode: host
+    command: ["/app/bin/gtfs-ingest", "-toml", "/app/config/gtfs-ingest.dev.toml"]
+    restart: "no"
+  gtfs-web:
+    image: gtfs-app:dev
+    container_name: gtfs-web
+    profiles: ["app", "infra"]
+    network_mode: host
+    command: ["/app/bin/gtfs-web", "-toml", "/app/config/gtfs-web.dev.toml"]
+    restart: unless-stopped
+    init: true
 
 volumes:
   postgres_data:
