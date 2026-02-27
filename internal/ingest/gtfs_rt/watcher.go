@@ -1,7 +1,9 @@
 package gtfs_rt
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,7 +67,9 @@ type GtfsRtWatcher struct {
 	Urls   []string
 	Client *http.Client
 	Db     *database.Database
-	ticker *time.Ticker
+
+	ticker   *time.Ticker
+	hashSums map[string][]byte
 
 	snapshotId int64
 	tuBuffer   []TripUpdateRecord
@@ -96,6 +100,7 @@ func NewGtfsRtWatcher(
 		Urls:      urls,
 		Db:        db,
 		Client:    &http.Client{},
+		hashSums:  make(map[string][]byte),
 		ticker:    time.NewTicker(time.Duration(intervalSec) * time.Second),
 		stuBuffer: make([]StopTimeUpdateRecord, 0, 2048),
 		telemetry: telemetry,
@@ -126,6 +131,16 @@ func (watcher *GtfsRtWatcher) SampleEndpoint(ctx context.Context, url string) (*
 	}
 
 	watcher.metrics.HttpBytesTotal.WithLabelValues(url).Add(float64(len(body)))
+
+	hasher := sha256.New()
+	hasher.Write(body)
+	hashSum := hasher.Sum(nil)
+
+	if bytes.Equal(hashSum, watcher.hashSums[url]) {
+		return nil, nil
+	}
+
+	watcher.hashSums[url] = hashSum
 
 	feedMessage := &gtfs.FeedMessage{}
 	err = proto.Unmarshal(body, feedMessage)
@@ -258,6 +273,10 @@ func (watcher *GtfsRtWatcher) SampleEndpoints(ctx context.Context) error {
 		if err != nil {
 			watcher.metrics.HttpErrorsTotal.WithLabelValues(url).Add(1)
 			return fmt.Errorf("Failed to sample GTFS-RT feed from URL %s: %w", url, err)
+		}
+		if feedMessage == nil {
+			// fmt.Printf("%s - rehashed GET body, continue without ingest\n", url)
+			continue
 		}
 
 		if err := watcher.IngestFeedMessage(ctx, feedMessage); err != nil {
