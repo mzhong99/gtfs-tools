@@ -19,7 +19,7 @@ FROM fedora:${FEDORA_VERSION} AS runtime
 WORKDIR /app
 
 RUN dnf -y update && \
-    dnf -y install ca-certificates && \
+    dnf -y install migrate ca-certificates && \
     dnf clean all
 
 COPY --from=build /src/bin /app/bin

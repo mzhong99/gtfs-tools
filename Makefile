@@ -47,7 +47,7 @@ infra-up: container-build
 app-up: container-build
 	$(COMPOSE) --profile infra --profile app up -d
 
-up:
+up: container-build
 	$(MAKE) infra-up
 	$(MAKE) db-migrate-up
 	$(MAKE) app-up
@@ -55,7 +55,8 @@ up:
 infra-down:
 	$(COMPOSE) --profile infra --profile app down
 
-db-reset: infra-down infra-up db-migrate-up
+db-reset:
+	$(COMPOSE) --profile infra --profile app down -v
 	@echo "Database reset complete"
 
 db-migrate-up:

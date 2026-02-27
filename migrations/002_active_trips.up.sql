@@ -44,3 +44,29 @@ CREATE TABLE IF NOT EXISTS trip_update_stop_time_events (
 -- * Representation per train
 -- * Representation of one route
 -- * Representation of one station
+
+-- Train view
+CREATE OR REPLACE VIEW view_train_trips AS
+WITH latest AS (
+    SELECT DISTINCT ON (trip_id, start_date)
+        trip_id,
+        start_date,
+        start_time,
+        direction_id,
+        snapshot_id,
+        insertion_time
+    FROM trip_update_events
+    ORDER BY
+        trip_id,
+        start_date,
+        insertion_time DESC,
+        snapshot_id DESC
+)
+SELECT
+    latest.trip_id,
+    latest.start_date,
+    latest.direction_id as rt_direction_id,
+    trips.route_id,
+    trips.trip_headsign
+FROM latest
+LEFT JOIN trips ON trips.rt_trip_id = latest.trip_id

@@ -42,8 +42,16 @@ CREATE TABLE IF NOT EXISTS trips (
     shape_id TEXT,
 
     feed_id BIGINT,
-    foreign key (feed_id) references feed_version(feed_id)
+    foreign key (feed_id) references feed_version(feed_id),
+
+    rt_trip_id TEXT GENERATED ALWAYS AS (
+        substring(trip_id FROM '[0-9]+_[^_]+$')
+    ) STORED,
+
+    UNIQUE(rt_trip_id, service_id)
 );
+
+CREATE INDEX idx_trips_rt_trip_id ON trips(rt_trip_id);
 
 CREATE TABLE IF NOT EXISTS stops (
     stop_id TEXT PRIMARY KEY,
