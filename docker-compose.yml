@@ -27,8 +27,11 @@ services:
       - "host.docker.internal:host-gateway"
   gtfs-rt-ingest:
     image: gtfs-app:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: gtfs-rt-ingest
-    profiles: ["app", "infra"]
+    profiles: ["app"]
     network_mode: host
     command: ["/app/bin/gtfs-rt-ingest", "-toml", "/app/config/gtfs-rt-ingest.dev.toml"]
     restart: unless-stopped
@@ -36,14 +39,14 @@ services:
   gtfs-ingest:
     image: gtfs-app:dev
     container_name: gtfs-ingest
-    profiles: ["app", "infra"]
+    profiles: ["app"]
     network_mode: host
     command: ["/app/bin/gtfs-ingest", "-toml", "/app/config/gtfs-ingest.dev.toml"]
     restart: "no"
   gtfs-web:
     image: gtfs-app:dev
     container_name: gtfs-web
-    profiles: ["app", "infra"]
+    profiles: ["app"]
     network_mode: host
     command: ["/app/bin/gtfs-web", "-toml", "/app/config/gtfs-web.dev.toml"]
     restart: unless-stopped

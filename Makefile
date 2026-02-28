@@ -14,6 +14,7 @@ LDFLAGS := \
 BINS := \
     gtfs-ingest \
     gtfs-rt-ingest \
+	gtfs-ctl \
     gtfs-web
 
 all: build
@@ -35,7 +36,7 @@ clean:
 .PHONY: container-build infra-up infra-down db-reset db-migrate-up db-migrate-down db-migrate-status
 
 container-build:
-	$(COMPOSE) build
+	$(COMPOSE) --profile app build
 
 infra-up: container-build
 	$(COMPOSE) --profile infra up -d
@@ -43,17 +44,24 @@ infra-up: container-build
 	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $$($(COMPOSE) ps -q postgres))" = "healthy" ]; do \
 		sleep 0.2; \
 	done
+	$(MAKE) db-migrate-up
 
 app-up: container-build
 	$(COMPOSE) --profile infra --profile app up -d
 
 up: container-build
 	$(MAKE) infra-up
-	$(MAKE) db-migrate-up
 	$(MAKE) app-up
 
+down:
+	$(MAKE) app-down
+	$(MAKE) infra-down
+
 infra-down:
-	$(COMPOSE) --profile infra --profile app down
+	$(COMPOSE) --profile infra down
+
+app-down:
+	$(COMPOSE) --profile app down
 
 db-reset:
 	$(COMPOSE) --profile infra --profile app down -v

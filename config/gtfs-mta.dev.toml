@@ -1,0 +1,1 @@
+database = "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db"
