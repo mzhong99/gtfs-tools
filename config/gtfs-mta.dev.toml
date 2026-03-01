@@ -1,1 +1,51 @@
-database = "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db"
+[feed]
+static_url = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip"
+
+[[feed.realtime]]
+id = "trains-ace"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-ace"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-g"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-g"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-nqrw"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-nqrw"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-1234567s"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-bdfm"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-bdfm"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-jz"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-jz"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-l"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-l"
+poll_sec = 1.0
+
+[[feed.realtime]]
+id = "trains-si"
+rt_url = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs-si"
+poll_sec = 1.0
+
+[db]
+url = "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db"
+
+[observability]
+telemetry_url = "0.0.0.0:9091"
+
+[ctl]
+default_format = "table"
