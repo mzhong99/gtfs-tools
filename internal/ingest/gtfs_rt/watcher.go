@@ -6,11 +6,14 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 	"tarediiran-industries.com/gtfs-services/internal/common"
 	database "tarediiran-industries.com/gtfs-services/internal/db"
@@ -77,6 +80,134 @@ type GtfsRtWatcher struct {
 
 	metrics   *common.Metrics
 	telemetry *common.TelemetryServer
+}
+
+type GtfsRtPollResult struct {
+	FeedID     string
+	URL        string
+	FetchedAt  time.Time
+	StatusCode int
+	Payload    []byte
+}
+
+func (result *GtfsRtPollResult) ToFeedFrame() common.FeedFrame {
+	return common.FeedFrame{
+		FeedID:     result.FeedID,
+		CapturedAt: time.Now(),
+		Status:     200,
+		Body:       result.Payload,
+		SHA256:     sha256.Sum256(result.Payload),
+		Source:     "http",
+	}
+}
+
+type GtfsRtPoller struct {
+	Config   common.RealTimeConfig
+	LastHash []byte
+	URL      string
+	Ticker   *time.Ticker
+}
+
+type GtfsRtPollCallback func(ctx context.Context, result GtfsRtPollResult) error
+
+type GtfsRtPollerSet struct {
+	Config         common.FeedConfig
+	Client         *http.Client
+	Pollers        []GtfsRtPoller
+	PayloadHandler GtfsRtPollCallback
+}
+
+func NewGtfsRtPollerSet(ctx context.Context, config common.SingleConfig) (*GtfsRtPollerSet, error) {
+	pollerSet := &GtfsRtPollerSet{
+		Client:  &http.Client{},
+		Pollers: make([]GtfsRtPoller, 0),
+	}
+
+	for _, realTimeConfig := range config.Feed.RealTime {
+		poller := GtfsRtPoller{
+			URL:    realTimeConfig.URL,
+			Ticker: time.NewTicker(time.Duration(realTimeConfig.PollSeconds) * time.Second),
+		}
+		pollerSet.Pollers = append(pollerSet.Pollers, poller)
+	}
+
+	return pollerSet, nil
+}
+
+func (pollerSet *GtfsRtPollerSet) SetHandler(handler GtfsRtPollCallback) {
+	pollerSet.PayloadHandler = handler
+}
+
+func (pollerSet *GtfsRtPollerSet) String() string {
+	var builder strings.Builder
+
+	fmt.Fprintf(&builder, "GtfsRtPollerSet with %d endpoints\n", len(pollerSet.Pollers))
+	for _, poller := range pollerSet.Pollers {
+		fmt.Fprintf(
+			&builder, "%s: (%.2fs) - %s\n",
+			poller.Config.ID,
+			poller.Config.PollSeconds,
+			poller.URL,
+		)
+	}
+
+	return builder.String()
+}
+
+func (poller *GtfsRtPoller) SampleEndpoint(
+	ctx context.Context,
+	client *http.Client,
+	handler GtfsRtPollCallback,
+) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", poller.URL, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	result := GtfsRtPollResult{
+		FeedID:     poller.Config.ID,
+		URL:        poller.URL,
+		FetchedAt:  time.Now(),
+		StatusCode: resp.StatusCode,
+		Payload:    body,
+	}
+	return handler(ctx, result)
+}
+
+func (pollerSet *GtfsRtPollerSet) PollEndpoint(ctx context.Context, poller GtfsRtPoller) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-poller.Ticker.C:
+			err := poller.SampleEndpoint(ctx, pollerSet.Client, pollerSet.PayloadHandler)
+			if err != nil {
+				log.Printf("poll %s: %v", poller.Config.ID, err)
+			}
+		}
+	}
+}
+
+func (pollerSet *GtfsRtPollerSet) Poll(ctx context.Context) error {
+	group, subctx := errgroup.WithContext(ctx)
+	for _, poller := range pollerSet.Pollers {
+		thisPoller := poller // need to capture the loop var, otherwise they all are the same
+		group.Go(func() error {
+			return pollerSet.PollEndpoint(subctx, thisPoller)
+		})
+	}
+	return group.Wait()
 }
 
 func NewGtfsRtWatcher(
