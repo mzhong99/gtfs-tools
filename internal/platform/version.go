@@ -1,4 +1,4 @@
-package common
+package platform
 
 var Version = "unknown"
 var GitCommit = "unknown"

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"tarediiran-industries.com/gtfs-services/internal/common"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 	"tarediiran-industries.com/gtfs-services/internal/ingest/gtfs_rt"
 )
 
@@ -25,7 +25,7 @@ func NewRecordCmd(app *GtfsCtlApp) *cobra.Command {
 
 func WritePollResult(
 	ctx context.Context,
-	writer *common.FeedRecordingWriter,
+	writer *platform.FeedRecordingWriter,
 	result gtfs_rt.PollResult,
 ) error {
 	frame := result.ToFeedFrame()
@@ -40,11 +40,11 @@ func (app *GtfsCtlApp) DoRecord(cmd *cobra.Command, args []string) error {
 	}
 
 	now := time.Now()
-	opts := common.RecordingHeaderOptions{
+	opts := platform.RecordingHeaderOptions{
 		RecordingName: args[0],
 		CreatedAt:     now,
 		TimeZone:      now.Location().String(),
-		Tool:          common.NewToolInfo(cmd.Root().Name()),
+		Tool:          platform.NewToolInfo(cmd.Root().Name()),
 	}
 
 	feeds, err := app.Config.Feed.ToFeedSpecs()
@@ -53,7 +53,7 @@ func (app *GtfsCtlApp) DoRecord(cmd *cobra.Command, args []string) error {
 	}
 
 	recordingDir := filepath.Join(app.Layout.RecordingsDir, opts.RecordingName)
-	recorder, err := common.CreateFeedRecording(recordingDir, feeds, opts)
+	recorder, err := platform.CreateFeedRecording(recordingDir, feeds, opts)
 	if err != nil {
 		return err
 	}

@@ -7,19 +7,19 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"tarediiran-industries.com/gtfs-services/internal/common"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 )
 
 type GtfsCtlApp struct {
 	ConfigPath string
-	Config     common.SingleConfig
+	Config     platform.SingleConfig
 	Context    context.Context
-	Layout     common.PlatformLayout
+	Layout     platform.PlatformLayout
 }
 
 func (app *GtfsCtlApp) ParseConfig() error {
 	var err error
-	app.Config, err = common.LoadConfigFromToml(app.ConfigPath)
+	app.Config, err = platform.LoadConfigFromToml(app.ConfigPath)
 	if err != nil {
 		return err
 	}
@@ -27,13 +27,13 @@ func (app *GtfsCtlApp) ParseConfig() error {
 }
 
 func (app *GtfsCtlApp) Init() error {
-	root, err := common.DefaultPlatformRoot()
+	root, err := platform.DefaultPlatformRoot()
 	if err != nil {
 		return err
 	}
 
-	app.Layout = common.NewPlatformLayout(root)
-	if err := common.InitPlatform(app.Layout); err != nil {
+	app.Layout = platform.NewPlatformLayout(root)
+	if err := platform.InitPlatform(app.Layout); err != nil {
 		return err
 	}
 

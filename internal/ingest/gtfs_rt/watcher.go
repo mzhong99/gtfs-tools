@@ -14,7 +14,7 @@ import (
 	"github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
-	"tarediiran-industries.com/gtfs-services/internal/common"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 	database "tarediiran-industries.com/gtfs-services/internal/db"
 )
 
@@ -73,8 +73,8 @@ type PollResult struct {
 	Payload    []byte
 }
 
-func (result *PollResult) ToFeedFrame() common.FeedFrame {
-	return common.FeedFrame{
+func (result *PollResult) ToFeedFrame() platform.FeedFrame {
+	return platform.FeedFrame{
 		FeedID:     result.FeedID,
 		CapturedAt: time.Now(),
 		Status:     200,
@@ -85,7 +85,7 @@ func (result *PollResult) ToFeedFrame() common.FeedFrame {
 }
 
 type Poller struct {
-	Config         common.RealTimeConfig
+	Config         platform.RealTimeConfig
 	LastHash       []byte
 	URL            string
 	Ticker         *time.Ticker
@@ -95,12 +95,12 @@ type Poller struct {
 type PollCallback func(ctx context.Context, result PollResult) error
 
 type PollerSet struct {
-	Config  common.FeedConfig
+	Config  platform.FeedConfig
 	Client  *http.Client
 	Pollers []Poller
 }
 
-func NewPollerSet(ctx context.Context, config common.SingleConfig) (*PollerSet, error) {
+func NewPollerSet(ctx context.Context, config platform.SingleConfig) (*PollerSet, error) {
 	pollerSet := &PollerSet{
 		Config:  config.Feed,
 		Client:  &http.Client{},
@@ -210,7 +210,7 @@ func (pollerSet *PollerSet) Stop() {
 }
 
 type FeedIngester struct {
-	cfg common.RealTimeConfig
+	cfg platform.RealTimeConfig
 
 	snapshotId  int64
 	lastHashSum []byte
@@ -220,13 +220,13 @@ type FeedIngester struct {
 }
 
 type FeedIngesterSet struct {
-	cfg common.SingleConfig
+	cfg platform.SingleConfig
 
 	ingesters []FeedIngester
 	db        *database.Database
 }
 
-func NewFeedIngesterSet(ctx context.Context, cfg common.SingleConfig) (*FeedIngesterSet, error) {
+func NewFeedIngesterSet(ctx context.Context, cfg platform.SingleConfig) (*FeedIngesterSet, error) {
 	db, err := cfg.NewDatabase(ctx)
 	if err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func (ingester *FeedIngester) IngestGtfsMessage(ctx context.Context, gtfsMsg *gt
 	return nil
 }
 
-func (ingester *FeedIngester) Ingest(ctx context.Context, frame common.FeedFrame) error {
+func (ingester *FeedIngester) Ingest(ctx context.Context, frame platform.FeedFrame) error {
 	if bytes.Equal(ingester.lastHashSum, frame.SHA256[:]) {
 		return nil
 	}
@@ -370,19 +370,19 @@ func (ingester *FeedIngester) Ingest(ctx context.Context, frame common.FeedFrame
 }
 
 type Watcher struct {
-	cfg common.SingleConfig
+	cfg platform.SingleConfig
 
 	pollerSet   *PollerSet
 	ingesterSet *FeedIngesterSet
 
-	metrics   *common.Metrics
-	telemetry *common.TelemetryServer
+	metrics   *platform.Metrics
+	telemetry *platform.TelemetryServer
 }
 
-func NewWatcher(ctx context.Context, cfg common.SingleConfig) (*Watcher, error) {
+func NewWatcher(ctx context.Context, cfg platform.SingleConfig) (*Watcher, error) {
 	telemetry := cfg.NewTelemetryServer()
 	telemetry.Start()
-	metrics := common.NewMetrics(telemetry.GetRegistry())
+	metrics := platform.NewMetrics(telemetry.GetRegistry())
 
 	pollerSet, err := NewPollerSet(ctx, cfg)
 	if err != nil {

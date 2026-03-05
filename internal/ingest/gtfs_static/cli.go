@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/BurntSushi/toml"
-	"tarediiran-industries.com/gtfs-services/internal/common"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 )
 
 type ConfigFile struct {
@@ -66,7 +66,7 @@ func ParseArgs(programName string, args []string, errOut io.Writer) (Config, err
 	}
 
 	if cfg.Version {
-		fmt.Fprintf(errOut, "%s: version %s (%s)\n", programName, common.Version, common.GitCommit)
+		fmt.Fprintf(errOut, "%s: version %s (%s)\n", programName, platform.Version, platform.GitCommit)
 		return Config{}, flag.ErrHelp
 	}
 

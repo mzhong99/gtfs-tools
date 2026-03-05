@@ -38,7 +38,7 @@ clean:
 container-build:
 	$(COMPOSE) --profile app build
 
-infra-up: container-build
+infra-up:
 	$(COMPOSE) --profile infra up -d
 	@echo "Waiting for postgres to be ready..."
 	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' $$($(COMPOSE) ps -q postgres))" = "healthy" ]; do \
