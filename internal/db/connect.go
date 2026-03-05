@@ -119,7 +119,7 @@ func (db *Database) CopyFromSlice(ctx context.Context, table string, columns []s
 
 	res, err := conn.Conn().CopyFrom(ctx, pgx.Identifier{table}, columns, pgx.CopyFromSlice(size, producer))
 	if err != nil {
-		return 0, fmt.Errorf("failed to copy from CSV file: %w", err)
+		return 0, fmt.Errorf("failed to copy from slice: %w", err)
 	}
 	return res, nil
 }

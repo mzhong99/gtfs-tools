@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs"
-	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 	"tarediiran-industries.com/gtfs-services/internal/common"
@@ -66,23 +65,7 @@ func (entry *StopTimeUpdateRecord) ToAnyArray() []any {
 	}
 }
 
-type GtfsRtWatcher struct {
-	Urls   []string
-	Client *http.Client
-	Db     *database.Database
-
-	ticker   *time.Ticker
-	hashSums map[string][]byte
-
-	snapshotId int64
-	tuBuffer   []TripUpdateRecord
-	stuBuffer  []StopTimeUpdateRecord
-
-	metrics   *common.Metrics
-	telemetry *common.TelemetryServer
-}
-
-type GtfsRtPollResult struct {
+type PollResult struct {
 	FeedID     string
 	URL        string
 	FetchedAt  time.Time
@@ -90,7 +73,7 @@ type GtfsRtPollResult struct {
 	Payload    []byte
 }
 
-func (result *GtfsRtPollResult) ToFeedFrame() common.FeedFrame {
+func (result *PollResult) ToFeedFrame() common.FeedFrame {
 	return common.FeedFrame{
 		FeedID:     result.FeedID,
 		CapturedAt: time.Now(),
@@ -101,30 +84,32 @@ func (result *GtfsRtPollResult) ToFeedFrame() common.FeedFrame {
 	}
 }
 
-type GtfsRtPoller struct {
-	Config   common.RealTimeConfig
-	LastHash []byte
-	URL      string
-	Ticker   *time.Ticker
+type Poller struct {
+	Config         common.RealTimeConfig
+	LastHash       []byte
+	URL            string
+	Ticker         *time.Ticker
+	PayloadHandler PollCallback
 }
 
-type GtfsRtPollCallback func(ctx context.Context, result GtfsRtPollResult) error
+type PollCallback func(ctx context.Context, result PollResult) error
 
-type GtfsRtPollerSet struct {
-	Config         common.FeedConfig
-	Client         *http.Client
-	Pollers        []GtfsRtPoller
-	PayloadHandler GtfsRtPollCallback
+type PollerSet struct {
+	Config  common.FeedConfig
+	Client  *http.Client
+	Pollers []Poller
 }
 
-func NewGtfsRtPollerSet(ctx context.Context, config common.SingleConfig) (*GtfsRtPollerSet, error) {
-	pollerSet := &GtfsRtPollerSet{
+func NewPollerSet(ctx context.Context, config common.SingleConfig) (*PollerSet, error) {
+	pollerSet := &PollerSet{
+		Config:  config.Feed,
 		Client:  &http.Client{},
-		Pollers: make([]GtfsRtPoller, 0),
+		Pollers: make([]Poller, 0),
 	}
 
 	for _, realTimeConfig := range config.Feed.RealTime {
-		poller := GtfsRtPoller{
+		poller := Poller{
+			Config: realTimeConfig,
 			URL:    realTimeConfig.URL,
 			Ticker: time.NewTicker(time.Duration(realTimeConfig.PollSeconds) * time.Second),
 		}
@@ -134,14 +119,25 @@ func NewGtfsRtPollerSet(ctx context.Context, config common.SingleConfig) (*GtfsR
 	return pollerSet, nil
 }
 
-func (pollerSet *GtfsRtPollerSet) SetHandler(handler GtfsRtPollCallback) {
-	pollerSet.PayloadHandler = handler
+func (pollerSet *PollerSet) SetHandler(handler PollCallback) {
+	for _, poller := range pollerSet.Pollers {
+		poller.PayloadHandler = handler
+	}
 }
 
-func (pollerSet *GtfsRtPollerSet) String() string {
+func (pollerSet *PollerSet) SetHandlerByID(id string, handler PollCallback) {
+	for i, _ := range pollerSet.Pollers {
+		poller := &pollerSet.Pollers[i]
+		if poller.Config.ID == id {
+			poller.PayloadHandler = handler
+		}
+	}
+}
+
+func (pollerSet *PollerSet) String() string {
 	var builder strings.Builder
 
-	fmt.Fprintf(&builder, "GtfsRtPollerSet with %d endpoints\n", len(pollerSet.Pollers))
+	fmt.Fprintf(&builder, "PollerSet with %d endpoints\n", len(pollerSet.Pollers))
 	for _, poller := range pollerSet.Pollers {
 		fmt.Fprintf(
 			&builder, "%s: (%.2fs) - %s\n",
@@ -154,11 +150,7 @@ func (pollerSet *GtfsRtPollerSet) String() string {
 	return builder.String()
 }
 
-func (poller *GtfsRtPoller) SampleEndpoint(
-	ctx context.Context,
-	client *http.Client,
-	handler GtfsRtPollCallback,
-) error {
+func (poller *Poller) SampleEndpoint(ctx context.Context, client *http.Client) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", poller.URL, nil)
 	if err != nil {
 		return err
@@ -175,23 +167,24 @@ func (poller *GtfsRtPoller) SampleEndpoint(
 		return err
 	}
 
-	result := GtfsRtPollResult{
+	result := PollResult{
 		FeedID:     poller.Config.ID,
 		URL:        poller.URL,
 		FetchedAt:  time.Now(),
 		StatusCode: resp.StatusCode,
 		Payload:    body,
 	}
-	return handler(ctx, result)
+
+	return poller.PayloadHandler(ctx, result)
 }
 
-func (pollerSet *GtfsRtPollerSet) PollEndpoint(ctx context.Context, poller GtfsRtPoller) error {
+func (pollerSet *PollerSet) PollEndpoint(ctx context.Context, poller Poller) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-poller.Ticker.C:
-			err := poller.SampleEndpoint(ctx, pollerSet.Client, pollerSet.PayloadHandler)
+			err := poller.SampleEndpoint(ctx, pollerSet.Client)
 			if err != nil {
 				log.Printf("poll %s: %v", poller.Config.ID, err)
 			}
@@ -199,7 +192,7 @@ func (pollerSet *GtfsRtPollerSet) PollEndpoint(ctx context.Context, poller GtfsR
 	}
 }
 
-func (pollerSet *GtfsRtPollerSet) Poll(ctx context.Context) error {
+func (pollerSet *PollerSet) Poll(ctx context.Context) error {
 	group, subctx := errgroup.WithContext(ctx)
 	for _, poller := range pollerSet.Pollers {
 		thisPoller := poller // need to capture the loop var, otherwise they all are the same
@@ -210,129 +203,68 @@ func (pollerSet *GtfsRtPollerSet) Poll(ctx context.Context) error {
 	return group.Wait()
 }
 
-func NewGtfsRtWatcher(
-	ctx context.Context,
-	telemetryAddr string,
-	urls []string,
-	domainStringName string,
-	intervalSec float64,
-) (*GtfsRtWatcher, error) {
-
-	db, err := database.NewDatabaseConnection(ctx, domainStringName)
-	if err != nil {
-		return nil, err
+func (pollerSet *PollerSet) Stop() {
+	for _, poller := range pollerSet.Pollers {
+		poller.Ticker.Stop()
 	}
-
-	telemetry := common.NewTelemetryServer(telemetryAddr)
-	telemetry.Start()
-	metrics := common.NewMetrics(telemetry.GetRegistry())
-
-	return &GtfsRtWatcher{
-		Urls:      urls,
-		Db:        db,
-		Client:    &http.Client{},
-		hashSums:  make(map[string][]byte),
-		ticker:    time.NewTicker(time.Duration(intervalSec) * time.Second),
-		stuBuffer: make([]StopTimeUpdateRecord, 0, 2048),
-		telemetry: telemetry,
-		metrics:   metrics,
-	}, nil
 }
 
-func (watcher *GtfsRtWatcher) SampleEndpoint(ctx context.Context, url string) (*gtfs.FeedMessage, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
+type FeedIngester struct {
+	cfg common.RealTimeConfig
 
-	ttfbTimer := prometheus.NewTimer(watcher.metrics.HttpTTFBSeconds.WithLabelValues(url))
-	resp, err := watcher.Client.Do(req)
-	ttfbTimer.ObserveDuration()
-
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	bodyReadTimer := prometheus.NewTimer(watcher.metrics.HttpReadBodySeconds.WithLabelValues(url))
-	body, err := io.ReadAll(resp.Body)
-	bodyReadTimer.ObserveDuration()
-	if err != nil {
-		return nil, err
-	}
-
-	watcher.metrics.HttpBytesTotal.WithLabelValues(url).Add(float64(len(body)))
-
-	hasher := sha256.New()
-	hasher.Write(body)
-	hashSum := hasher.Sum(nil)
-
-	if bytes.Equal(hashSum, watcher.hashSums[url]) {
-		return nil, nil
-	}
-
-	watcher.hashSums[url] = hashSum
-
-	feedMessage := &gtfs.FeedMessage{}
-	err = proto.Unmarshal(body, feedMessage)
-	if err != nil {
-		return nil, err
-	}
-
-	return feedMessage, nil
+	snapshotId  int64
+	lastHashSum []byte
+	tuBuf       []TripUpdateRecord
+	stuBuf      []StopTimeUpdateRecord
+	db          *database.Database
 }
 
-func (watcher *GtfsRtWatcher) FlushStopTimeUpdates(ctx context.Context) error {
-	_, err := watcher.Db.CopyFromSlice(
-		ctx,
-		"trip_update_stop_time_events",
-		StopTimeUpdateColumns(),
-		len(watcher.stuBuffer),
-		func(i int) ([]any, error) {
-			return watcher.stuBuffer[i].ToAnyArray(), nil
-		},
-	)
+type FeedIngesterSet struct {
+	cfg common.SingleConfig
 
-	if err != nil {
-		return err
-	}
-
-	watcher.stuBuffer = make([]StopTimeUpdateRecord, 0, 2048)
-	return nil
+	ingesters []FeedIngester
+	db        *database.Database
 }
 
-func (watcher *GtfsRtWatcher) FlushTripUpdates(ctx context.Context) error {
-	_, err := watcher.Db.CopyFromSlice(
-		ctx,
-		"trip_update_events",
-		TripUpdateColumns(),
-		len(watcher.tuBuffer),
-		func(i int) ([]any, error) {
-			return watcher.tuBuffer[i].ToAnyArray(), nil
-		},
-	)
-
+func NewFeedIngesterSet(ctx context.Context, cfg common.SingleConfig) (*FeedIngesterSet, error) {
+	db, err := cfg.NewDatabase(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	watcher.tuBuffer = make([]TripUpdateRecord, 0, 2048)
-	return nil
+	ingesters := make([]FeedIngester, 0)
+	for _, rtcfg := range cfg.Feed.RealTime {
+		ingester := FeedIngester{
+			cfg:    rtcfg,
+			db:     db,
+			tuBuf:  make([]TripUpdateRecord, 0, 2048),
+			stuBuf: make([]StopTimeUpdateRecord, 0, 2048),
+		}
+		ingesters = append(ingesters, ingester)
+	}
+
+	return &FeedIngesterSet{cfg: cfg, ingesters: ingesters, db: db}, nil
 }
 
-func (watcher *GtfsRtWatcher) InsertFeedSnapshot(ctx context.Context) error {
-	row := watcher.Db.QueryRowContext(
+func (ingester *FeedIngesterSet) Stop() {
+	ingester.db.Close()
+}
+
+func (ingester *FeedIngester) insertFeedSnapshot(ctx context.Context) error {
+	row := ingester.db.QueryRowContext(
 		ctx,
 		"INSERT INTO feed_snapshots DEFAULT VALUES RETURNING snapshot_id",
 	)
 
-	if err := row.Scan(&watcher.snapshotId); err != nil {
+	if err := row.Scan(&ingester.snapshotId); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (watcher *GtfsRtWatcher) InsertTripUpdateEvent(ctx context.Context, tripUpdate *gtfs.TripUpdate) error {
+func (ingester *FeedIngester) bufferTripUpdate(
+	ctx context.Context, tripUpdate *gtfs.TripUpdate,
+) error {
 	trip := tripUpdate.GetTrip()
 	if trip == nil {
 		return fmt.Errorf("TripUpdate message does not contain a TripDescriptor")
@@ -343,17 +275,17 @@ func (watcher *GtfsRtWatcher) InsertTripUpdateEvent(ctx context.Context, tripUpd
 		StartDate:   trip.GetStartDate(),
 		StartTime:   trip.GetStartTime(),
 		DirectionId: trip.GetDirectionId(),
-		SnapshotId:  watcher.snapshotId,
+		SnapshotId:  ingester.snapshotId,
 	}
 
-	watcher.tuBuffer = append(watcher.tuBuffer, tuRecord)
+	ingester.tuBuf = append(ingester.tuBuf, tuRecord)
 
 	for _, stopTimeUpdate := range tripUpdate.GetStopTimeUpdate() {
 		stuRecord := StopTimeUpdateRecord{
 			StopId:       *stopTimeUpdate.StopId,
 			ArrivalUTC:   0,
 			DepartureUTC: 0,
-			SnapshotId:   watcher.snapshotId,
+			SnapshotId:   ingester.snapshotId,
 		}
 
 		if arrival := stopTimeUpdate.GetArrival(); arrival != nil {
@@ -363,80 +295,130 @@ func (watcher *GtfsRtWatcher) InsertTripUpdateEvent(ctx context.Context, tripUpd
 			stuRecord.DepartureUTC = departure.GetTime()
 		}
 
-		watcher.stuBuffer = append(watcher.stuBuffer, stuRecord)
+		ingester.stuBuf = append(ingester.stuBuf, stuRecord)
 	}
 
 	return nil
 }
 
-func (watcher *GtfsRtWatcher) IngestFeedMessage(ctx context.Context, feedMessage *gtfs.FeedMessage) error {
-	if err := watcher.InsertFeedSnapshot(ctx); err != nil {
+func (ingester *FeedIngester) flushTripUpdates(ctx context.Context) error {
+	_, err := ingester.db.CopyFromSlice(
+		ctx,
+		"trip_update_events",
+		TripUpdateColumns(),
+		len(ingester.tuBuf),
+		func(i int) ([]any, error) { return ingester.tuBuf[i].ToAnyArray(), nil },
+	)
+
+	if err != nil {
+		return err
+	}
+	ingester.tuBuf = make([]TripUpdateRecord, 0, 2048)
+
+	_, err = ingester.db.CopyFromSlice(
+		ctx,
+		"trip_update_stop_time_events",
+		StopTimeUpdateColumns(),
+		len(ingester.stuBuf),
+		func(i int) ([]any, error) { return ingester.stuBuf[i].ToAnyArray(), nil },
+	)
+
+	if err != nil {
+		return err
+	}
+	ingester.stuBuf = make([]StopTimeUpdateRecord, 0, 2048)
+
+	return nil
+}
+
+func (ingester *FeedIngester) IngestGtfsMessage(ctx context.Context, gtfsMsg *gtfs.FeedMessage) error {
+	if err := ingester.insertFeedSnapshot(ctx); err != nil {
 		return err
 	}
 
-	for _, entity := range feedMessage.GetEntity() {
+	for _, entity := range gtfsMsg.GetEntity() {
 		tripUpdate := entity.GetTripUpdate()
 		if tripUpdate == nil {
 			continue
 		}
 
-		if err := watcher.InsertTripUpdateEvent(ctx, tripUpdate); err != nil {
+		if err := ingester.bufferTripUpdate(ctx, tripUpdate); err != nil {
 			return err
 		}
 	}
 
-	if err := watcher.FlushTripUpdates(ctx); err != nil {
-		return err
-	}
-	if err := watcher.FlushStopTimeUpdates(ctx); err != nil {
+	if err := ingester.flushTripUpdates(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (watcher *GtfsRtWatcher) SampleEndpoints(ctx context.Context) error {
-	benchmarker := common.NewBenchmarker("sample-endpoints")
-	defer benchmarker.Close()
-
-	for _, url := range watcher.Urls {
-		feedMessage, err := watcher.SampleEndpoint(ctx, url)
-		if err != nil {
-			watcher.metrics.HttpErrorsTotal.WithLabelValues(url).Add(1)
-			return fmt.Errorf("Failed to sample GTFS-RT feed from URL %s: %w", url, err)
-		}
-		if feedMessage == nil {
-			// fmt.Printf("%s - rehashed GET body, continue without ingest\n", url)
-			continue
-		}
-
-		if err := watcher.IngestFeedMessage(ctx, feedMessage); err != nil {
-			fmt.Printf("Failed to ingest GTFS-RT feed from URL %s: %v\n", url, err)
-		} else {
-			fmt.Printf("Sampled GTFS-RT feed from URL %s: %d entities\n", url, len(feedMessage.Entity))
-		}
+func (ingester *FeedIngester) Ingest(ctx context.Context, frame common.FeedFrame) error {
+	if bytes.Equal(ingester.lastHashSum, frame.SHA256[:]) {
+		return nil
 	}
-	return nil
+
+	ingester.lastHashSum = frame.SHA256[:]
+
+	gtfsMsg := &gtfs.FeedMessage{}
+	if err := proto.Unmarshal(frame.Body, gtfsMsg); err != nil {
+		return err
+	}
+
+	return ingester.IngestGtfsMessage(ctx, gtfsMsg)
 }
 
-func (watcher *GtfsRtWatcher) Watch(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			fmt.Println("Poll error:", ctx.Err())
-			return ctx.Err()
+type Watcher struct {
+	cfg common.SingleConfig
 
-		case <-watcher.ticker.C:
-			fmt.Println("Polling GTFS-RT feeds...")
-			if err := watcher.SampleEndpoints(ctx); err != nil {
-				return err
-			}
-		}
-	}
+	pollerSet   *PollerSet
+	ingesterSet *FeedIngesterSet
+
+	metrics   *common.Metrics
+	telemetry *common.TelemetryServer
 }
 
-func (watcher *GtfsRtWatcher) Close() error {
-	watcher.ticker.Stop()
+func NewWatcher(ctx context.Context, cfg common.SingleConfig) (*Watcher, error) {
+	telemetry := cfg.NewTelemetryServer()
+	telemetry.Start()
+	metrics := common.NewMetrics(telemetry.GetRegistry())
+
+	pollerSet, err := NewPollerSet(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	ingesterSet, err := NewFeedIngesterSet(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ingester := range ingesterSet.ingesters {
+		pollerSet.SetHandlerByID(
+			ingester.cfg.ID,
+			func(ctx context.Context, result PollResult) error {
+				ingester := ingester
+				return ingester.Ingest(ctx, result.ToFeedFrame())
+			},
+		)
+	}
+
+	return &Watcher{
+		cfg:         cfg,
+		pollerSet:   pollerSet,
+		ingesterSet: ingesterSet,
+		metrics:     metrics,
+		telemetry:   telemetry,
+	}, nil
+}
+
+func (watcher *Watcher) Watch(ctx context.Context) error {
+	return watcher.pollerSet.Poll(ctx)
+}
+
+func (watcher *Watcher) Close() {
 	watcher.telemetry.Stop()
-	return watcher.Db.Close()
+	watcher.pollerSet.Stop()
+	watcher.ingesterSet.Stop()
 }

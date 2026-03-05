@@ -150,3 +150,7 @@ func (config *FeedConfig) ToFeedSpecs() ([]FeedSpec, error) {
 func (config *SingleConfig) NewDatabase(ctx context.Context) (*database.Database, error) {
 	return database.NewDatabaseConnection(ctx, config.Database.URL)
 }
+
+func (config *SingleConfig) NewTelemetryServer() *TelemetryServer {
+	return NewTelemetryServer(config.Observability.TelemetryUrl)
+}

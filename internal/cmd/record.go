@@ -26,7 +26,7 @@ func NewRecordCmd(app *GtfsCtlApp) *cobra.Command {
 func WritePollResult(
 	ctx context.Context,
 	writer *common.FeedRecordingWriter,
-	result gtfs_rt.GtfsRtPollResult,
+	result gtfs_rt.PollResult,
 ) error {
 	frame := result.ToFeedFrame()
 	fmt.Printf("Wrote: %s\n", frame)
@@ -34,7 +34,7 @@ func WritePollResult(
 }
 
 func (app *GtfsCtlApp) DoRecord(cmd *cobra.Command, args []string) error {
-	pollerSet, err := gtfs_rt.NewGtfsRtPollerSet(app.Context, app.Config)
+	pollerSet, err := gtfs_rt.NewPollerSet(app.Context, app.Config)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (app *GtfsCtlApp) DoRecord(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	pollerSet.SetHandler(func(ctx context.Context, result gtfs_rt.GtfsRtPollResult) error {
+	pollerSet.SetHandler(func(ctx context.Context, result gtfs_rt.PollResult) error {
 		return WritePollResult(ctx, recorder, result)
 	})
 
