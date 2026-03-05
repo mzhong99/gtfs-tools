@@ -2,7 +2,9 @@ package common
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"io"
 
 	"github.com/BurntSushi/toml"
 	database "tarediiran-industries.com/gtfs-services/internal/db"
@@ -32,9 +34,52 @@ type ObservabilityConfig struct {
 }
 
 type SingleConfig struct {
-	Feed     FeedConfig     `toml:"feed"`
-	Database DatabaseConfig `toml:"db"`
-	Control  ControlConfig  `toml:"ctl"`
+	Feed          FeedConfig          `toml:"feed"`
+	Database      DatabaseConfig      `toml:"db"`
+	Control       ControlConfig       `toml:"ctl"`
+	Observability ObservabilityConfig `toml:"observability"`
+}
+
+type ArgsConfig struct {
+	Version        bool
+	TomlConfigPath string
+}
+
+type MainFunction func(cfg SingleConfig) error
+
+func ParseArgs(programName string, args []string, errOut io.Writer) (SingleConfig, error) {
+	var argsConfig ArgsConfig
+
+	fs := flag.NewFlagSet(programName, flag.ContinueOnError)
+	fs.SetOutput(errOut)
+
+	fs.Usage = func() {
+		fmt.Fprintf(errOut, "Usage: %s [options]\n\n", programName)
+		fmt.Fprintln(errOut, "Options")
+		fs.PrintDefaults()
+	}
+
+	fs.BoolVar(&argsConfig.Version, "version", false, "Prints CLI version")
+	fs.StringVar(&argsConfig.TomlConfigPath, "toml", "", "Configuration file")
+
+	if err := fs.Parse(args); err != nil {
+		return SingleConfig{}, err
+	}
+
+	if argsConfig.Version {
+		fmt.Fprintf(errOut, "%s: version %s (%s)\n", programName, Version, GitCommit)
+		return SingleConfig{}, flag.ErrHelp
+	}
+
+	singleConfig, err := LoadConfigFromToml(argsConfig.TomlConfigPath)
+	if err != nil {
+		return SingleConfig{}, fmt.Errorf("LoadConfigFromToml: %w", err)
+	}
+	if err := singleConfig.Validate(); err != nil {
+		return SingleConfig{}, err
+	}
+
+	return singleConfig, nil
 }
 
 func LoadConfigFromToml(path string) (SingleConfig, error) {
@@ -44,6 +89,33 @@ func LoadConfigFromToml(path string) (SingleConfig, error) {
 		return SingleConfig{}, err
 	}
 	return config, nil
+}
+
+func (cfg SingleConfig) Validate() error {
+	if len(cfg.Feed.RealTime) == 0 {
+		return fmt.Errorf("Need at least one URL to parse real-time feed")
+	}
+	if cfg.Database.URL == "" {
+		return fmt.Errorf("Need path to database to dump real-time feed")
+	}
+	return nil
+}
+
+func ParseArgsAndRun(args []string, out, errOut io.Writer, runner MainFunction) int {
+	cfg, err := ParseArgs(args[0], args[1:], errOut)
+	if flag.ErrHelp == err {
+		return 0
+	}
+	if err != nil {
+		fmt.Fprintln(errOut, "Error:", err)
+		return -1
+	}
+
+	if err := runner(cfg); err != nil {
+		panic(err)
+	}
+
+	return 0
 }
 
 func (config *RealTimeConfig) ToFeedSpec() (FeedSpec, error) {
