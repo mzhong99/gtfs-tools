@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
-	"tarediiran-industries.com/gtfs-services/internal/platform"
 	"tarediiran-industries.com/gtfs-services/internal/ingest/gtfs_rt"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 )
 
 func NewRecordCmd(app *GtfsCtlApp) *cobra.Command {
@@ -34,38 +33,23 @@ func WritePollResult(
 }
 
 func (app *GtfsCtlApp) DoRecord(cmd *cobra.Command, args []string) error {
-	pollerSet, err := gtfs_rt.NewPollerSet(app.Context, app.Config)
-	if err != nil {
-		return err
-	}
-
 	now := time.Now()
 	opts := platform.RecordingHeaderOptions{
 		RecordingName: args[0],
+		RecordingPath: app.Layout.RecordingsDir,
 		CreatedAt:     now,
 		TimeZone:      now.Location().String(),
 		Tool:          platform.NewToolInfo(cmd.Root().Name()),
 	}
 
-	feeds, err := app.Config.Feed.ToFeedSpecs()
+	recorder, err := gtfs_rt.NewFileRecorder(app.Context, app.Config, opts)
 	if err != nil {
 		return err
 	}
 
-	recordingDir := filepath.Join(app.Layout.RecordingsDir, opts.RecordingName)
-	recorder, err := platform.CreateFeedRecording(recordingDir, feeds, opts)
-	if err != nil {
-		return err
-	}
+	log.Printf("================================================================================\n")
+	log.Printf("Start file record: %s\n", opts.GetRecordingPath())
+	log.Printf("================================================================================\n")
 
-	pollerSet.SetHandler(func(ctx context.Context, result gtfs_rt.PollResult) error {
-		return WritePollResult(ctx, recorder, result)
-	})
-
-	log.Println("================================================================================")
-	log.Printf("Start file record to %s\n", opts.RecordingName)
-	log.Println("================================================================================")
-	log.Println(pollerSet)
-
-	return pollerSet.Poll(app.Context)
+	return recorder.Record(app.Context)
 }

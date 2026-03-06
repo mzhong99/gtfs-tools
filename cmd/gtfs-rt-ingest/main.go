@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"tarediiran-industries.com/gtfs-services/internal/platform"
 	"tarediiran-industries.com/gtfs-services/internal/ingest/gtfs_rt"
+	"tarediiran-industries.com/gtfs-services/internal/platform"
 )
 
 func main() {

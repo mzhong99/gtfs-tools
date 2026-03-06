@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -78,9 +80,14 @@ type RecordingHeader struct {
 
 type RecordingHeaderOptions struct {
 	RecordingName string
+	RecordingPath string
 	CreatedAt     time.Time
 	TimeZone      string
 	Tool          ToolInfo
+}
+
+func (opts RecordingHeaderOptions) GetRecordingPath() string {
+	return filepath.Join(opts.RecordingPath, opts.RecordingName)
 }
 
 type FeedSpec struct {
@@ -103,14 +110,11 @@ type FeedRecordingWriter struct {
 }
 
 type FeedRecordingReader struct {
-	header     RecordingHeader
-	rootDir    string
-	payloadDir string
+	header  RecordingHeader
+	rootDir string
 
 	framesFile *os.File
-	scanner    *bufio.Scanner
-
-	sequenceNumber int
+	decoder    *json.Decoder
 }
 
 func NewToolInfo(name string) ToolInfo {
@@ -171,10 +175,10 @@ func BuildRecordingHeader(opts RecordingHeaderOptions, feeds []FeedSpec) (Record
 }
 
 func CreateFeedRecording(
-	recordingDir string,
 	feeds []FeedSpec,
 	opts RecordingHeaderOptions,
 ) (*FeedRecordingWriter, error) {
+	recordingDir := opts.GetRecordingPath()
 	header, err := BuildRecordingHeader(opts, feeds)
 	if err != nil {
 		return nil, err
@@ -232,9 +236,8 @@ func (writer *FeedRecordingWriter) Append(ctx context.Context, frame FeedFrame) 
 		FeedID:         frame.FeedID,
 		CapturedAt:     frame.CapturedAt,
 		Source:         frame.Source,
-		SHA256:         hex.EncodeToString(frame.SHA256[:]),
 
-		// TODO: Fill frame status here
+		// TODO: Fill frame status and figure out sha256 here
 	}
 
 	if len(frame.Body) > 0 {
@@ -268,19 +271,70 @@ func (writer *FeedRecordingWriter) Append(ctx context.Context, frame FeedFrame) 
 }
 
 func (writer *FeedRecordingWriter) Close() error {
-	return nil
+	return writer.framesFile.Close()
 }
 
-func OpenFeedRecording(rootDir string) (*FeedRecordingReader, error) {
-	return nil, nil
+func OpenFeedRecording(recordingDir string) (*FeedRecordingReader, error) {
+	var err error
+	header := RecordingHeader{}
+	headerPath := filepath.Join(recordingDir, "recording.json")
+
+	headerBytes, err := os.ReadFile(headerPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(headerBytes, &header); err != nil {
+		return nil, err
+	}
+
+	framesPath := filepath.Join(recordingDir, "frames.jsonl")
+	framesFile, err := os.Open(framesPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FeedRecordingReader{
+		header:     header,
+		rootDir:    recordingDir,
+		framesFile: framesFile,
+		decoder:    json.NewDecoder(framesFile),
+	}, nil
+}
+
+func (reader *FeedRecordingReader) Close() error {
+	return reader.framesFile.Close()
 }
 
 func (reader *FeedRecordingReader) Reset() {
-	reader.sequenceNumber = 0
+	reader.framesFile.Seek(0, io.SeekStart)
+	reader.decoder = json.NewDecoder(reader.framesFile)
 }
 
 func (reader *FeedRecordingReader) Next(ctx context.Context) (FeedFrame, error) {
-	return FeedFrame{}, nil
+	if !reader.decoder.More() {
+		return FeedFrame{}, io.EOF
+	}
+
+	meta := FeedFrameMeta{}
+	if err := reader.decoder.Decode(&meta); err != nil {
+		return FeedFrame{}, err
+	}
+
+	payloadPathAbs := filepath.Join(reader.rootDir, meta.PayloadPath)
+	payload, err := os.ReadFile(payloadPathAbs)
+	if err != nil {
+		return FeedFrame{}, err
+	}
+
+	return FeedFrame{
+		FeedID:     meta.FeedID,
+		CapturedAt: meta.CapturedAt,
+		Status:     200, // TODO: Address this
+		Source:     "replay",
+		Body:       payload,
+		SHA256:     sha256.Sum256(payload),
+	}, nil
 }
 
 func writeJSONFileAtomic(path string, v any, perm os.FileMode) error {
