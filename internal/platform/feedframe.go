@@ -321,6 +321,8 @@ func (reader *FeedRecordingReader) Next(ctx context.Context) (FeedFrame, error) 
 		return FeedFrame{}, err
 	}
 
+	fmt.Println(meta)
+
 	payloadPathAbs := filepath.Join(reader.rootDir, meta.PayloadPath)
 	payload, err := os.ReadFile(payloadPathAbs)
 	if err != nil {
