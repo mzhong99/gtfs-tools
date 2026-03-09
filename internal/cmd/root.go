@@ -69,8 +69,7 @@ func NewRootCmd(app *GtfsCtlApp) *cobra.Command {
 	cmd.AddCommand(NewArrivalsCmd(app))
 	cmd.AddCommand(NewTripsCmd(app))
 	cmd.AddCommand(NewStationsCmd(app))
-	cmd.AddCommand(NewRecordCmd(app))
-	cmd.AddCommand(NewPlaybackCmd(app))
+	cmd.AddCommand(NewCaptureCmd(app))
 
 	return cmd
 }
