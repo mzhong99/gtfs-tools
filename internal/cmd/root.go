@@ -66,10 +66,8 @@ func NewRootCmd(app *GtfsCtlApp) *cobra.Command {
 		"Path to configuration file",
 	)
 
-	cmd.AddCommand(NewArrivalsCmd(app))
-	cmd.AddCommand(NewTripsCmd(app))
-	cmd.AddCommand(NewStationsCmd(app))
 	cmd.AddCommand(NewCaptureCmd(app))
+	cmd.AddCommand(NewQueryCmd(app))
 
 	return cmd
 }

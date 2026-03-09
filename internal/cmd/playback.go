@@ -17,7 +17,7 @@ func NewPlaybackCmd(app *GtfsCtlApp) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("delays", false, "Respect recorded real-time delays")
-	cmd.Flags().Bool("list", false, "Respect recorded real-time delays")
+	cmd.Flags().Bool("list", false, "List all playback captures currently recorded")
 
 	return cmd
 }
