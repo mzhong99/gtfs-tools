@@ -7,25 +7,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewDebugQueryCmd(app *GtfsCtlApp) *cobra.Command {
+func NewSqlReadQueryCmd(app *GtfsCtlApp) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "debug <sql_query>",
+		Use:   "sql <query>",
 		Short: "Runs a manual PostgreSQL query. DANGEROUS - SQL Injections possible!!!",
-		RunE:  app.DoDebugQuery,
+		RunE:  app.DoSqlReadQuery,
 		Args:  cobra.ExactArgs(1),
 	}
 
 	return cmd
 }
 
-func (app *GtfsCtlApp) DoDebugQuery(cmd *cobra.Command, args []string) error {
+func (app *GtfsCtlApp) DoSqlReadQuery(cmd *cobra.Command, args []string) error {
+	return app.DoSqlReadQuerySafe(cmd, args[0], args[1:])
+}
+
+func (app *GtfsCtlApp) DoSqlReadQuerySafe(cmd *cobra.Command, query string, args []string) error {
 	db, err := app.Config.NewDatabase(app.Context)
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
-	query := args[0]
-	rows, err := db.QueryContext(app.Context, query)
+	rows, err := db.QueryContext(app.Context, query, args)
 	if err != nil {
 		return err
 	}

@@ -11,7 +11,7 @@ func NewQueryCmd(app *GtfsCtlApp) *cobra.Command {
 	cmd.AddCommand(NewArrivalsCmd(app))
 	cmd.AddCommand(NewTripsCmd(app))
 	cmd.AddCommand(NewStationsCmd(app))
-	cmd.AddCommand(NewDebugQueryCmd(app))
+	cmd.AddCommand(NewSqlReadQueryCmd(app))
 
 	return cmd
 }

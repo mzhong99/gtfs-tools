@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"tarediiran-industries.com/gtfs-services/internal/store"
 )
 
 func NewTripsCmd(app *GtfsCtlApp) *cobra.Command {
@@ -25,18 +24,66 @@ func NewTripsListCmd(app *GtfsCtlApp) *cobra.Command {
 		RunE:          app.DoTripsList,
 	}
 
-	cmd.Flags().String("route", "", "Filter by route ID (1, 2, 3, A, C, E, B, D, F...)")
+	cmd.Flags().StringSlice("route", nil, "Filter by route ID (1, 2, 3, A, C, E, B, D, F...)")
 	cmd.Flags().Int("direction", -1, "Filter by direction ID (0, 1)")
 	cmd.Flags().String("service", "", "Filter by service ID (Saturday, Sunday, Weekday...)")
 	cmd.Flags().String("pattern", "", "Filter by pattern ID")
 	cmd.Flags().Bool("with-stop-time", false, "List anticipated stop times for a trip")
 	cmd.Flags().String("headsign", "", "Filter by trip headsign")
-	cmd.Flags().String("contains-stop", "", "Filter by stop ID")
+	cmd.Flags().StringSlice("contains-stop", nil, "Filter by stop ID")
 
 	return cmd
 }
 
 func (app *GtfsCtlApp) DoTripsList(cmd *cobra.Command, args []string) error {
-	fmt.Println("ayy lmao")
+	var err error
+
+	db, err := app.Config.NewDatabase(app.Context)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	routes, err := cmd.Flags().GetStringSlice("route")
+	if err != nil {
+		return err
+	}
+	direction, err := cmd.Flags().GetInt("direction")
+	if err != nil {
+		return err
+	}
+	service, err := cmd.Flags().GetString("service")
+	if err != nil {
+		return err
+	}
+	pattern, err := cmd.Flags().GetString("pattern")
+	if err != nil {
+		return err
+	}
+	includeStopTime, err := cmd.Flags().GetBool("with-stop-time")
+	if err != nil {
+		return err
+	}
+	headsign, err := cmd.Flags().GetString("headsign")
+	if err != nil {
+		return err
+	}
+	stopIDs, err := cmd.Flags().GetStringSlice("contains-stop")
+	if err != nil {
+		return err
+	}
+
+	query := store.TripsQuery{
+		Routes:          routes,
+		Direction:       direction,
+		Service:         service,
+		Pattern:         pattern,
+		IncludeStopTime: includeStopTime,
+		HeadSign:        headsign,
+		StopIDs:         stopIDs,
+	}
+
+	store.ListTrips(db, query)
+
 	return nil
 }
