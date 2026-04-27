@@ -19,12 +19,14 @@ ARG AIR_VERSION=v1.61.7
 
 RUN apt-get update && apt-get install -y \
     git vim tmux make curl jq ripgrep ca-certificates \
-    postgresql-client protobuf-compiler gh \
+    postgresql-client protobuf-compiler gh bash-completion \
     && rm -rf /var/lib/apt/lists/*
 
 RUN go install golang.org/x/tools/gopls@${GOPLS_VERSION} \
     && go install github.com/go-delve/delve/cmd/dlv@${DELVE_VERSION} \
     && go install github.com/air-verse/air@${AIR_VERSION}
+
+RUN echo '[ -f /etc/bash_completion ] && source /etc/bash_completion' >> /root/.bashrc
 
 WORKDIR /workspace
 EOF
