@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ ! -t 0 ]; then
+    exec < /dev/tty
+fi
+
 IMAGE="gtfs-ephemeral-dev:latest"
 REPO_URL="https://github.com/mzhong99/gtfs-tools.git"
 REPO_DIR="gtfs"
