@@ -26,7 +26,11 @@ RUN go install golang.org/x/tools/gopls@${GOPLS_VERSION} \
     && go install github.com/go-delve/delve/cmd/dlv@${DELVE_VERSION} \
     && go install github.com/air-verse/air@${AIR_VERSION}
 
-RUN echo '[ -f /etc/bash_completion ] && source /etc/bash_completion' >> /root/.bashrc
+RUN curl -o /root/.git-prompt.sh \
+  https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh
+
+RUN echo 'source /root/.git-prompt.sh' >> /root/.bashrc
+RUN echo 'export PS1="\u@\h:\w\$ "' >> /root/.bashrc
 
 WORKDIR /workspace
 EOF
