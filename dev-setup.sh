@@ -87,10 +87,10 @@ safe_exit() {
 
         # Unpushed commits
         if git rev-parse @{u} >/dev/null 2>&1; then
-            LOCAL="$(git rev-parse @)"
-            REMOTE="$(git rev-parse @{u})"
+            LOCAL="\$(git rev-parse @)"
+            REMOTE="\$(git rev-parse @{u})"
 
-            if [ "$LOCAL" != "$REMOTE" ]; then
+            if [ "\$LOCAL" != "\$REMOTE" ]; then
                 echo
                 echo "[gtfs-dev] WARNING: unpushed commits detected."
                 echo
