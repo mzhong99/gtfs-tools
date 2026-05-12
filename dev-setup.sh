@@ -130,7 +130,7 @@ docker run --rm -it \
     --name gtfs-ephemeral-dev \
     --network host \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$HOME/.vimrc:/root/.vimrc:ro" \
+    -v "$HOME/.vimrc:/root/.vimrc.host:ro" \
     -v "$HOST_WORKDIR:$HOST_WORKDIR" \
     -w "$HOST_WORKDIR" \
     -e HOST_WORKDIR="$HOST_WORKDIR" \
