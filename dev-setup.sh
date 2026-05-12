@@ -9,7 +9,7 @@ GIT_NAME="Matthew Zhong"
 GIT_EMAIL="matthewzhong@logmethods.com"
 
 HOST_WORKDIR="$(mktemp -d "$HOME/gtfs-dev.XXXXXX")"
-trap 'rm -rf "$HOST_WORKDIR"' EXIT
+trap 'sudo rm -rf "$HOST_WORKDIR"' EXIT
 
 echo "[gtfs-dev] Building ephemeral dev image..."
 
