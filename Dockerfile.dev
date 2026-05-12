@@ -57,6 +57,9 @@ RUN printf '%s\n' \
 'set nocompatible' \
 'filetype plugin indent on' \
 'syntax enable' \
+'set completeopt=menuone,noinsert,noselect' \
+'inoremap <C-Space> <C-x><C-o>' \
+'inoremap <Nul> <C-x><C-o>' \
 > /root/.vimrc
 
 RUN test -s /root/.vimrc && cat /root/.vimrc
