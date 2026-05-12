@@ -55,56 +55,54 @@ docker run --rm -it \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:/workspace" \
     "$IMAGE" \
-    bash -lc "
-        set -euo pipefail
+  bash -lc "
+set -euo pipefail
 
-        gh auth login
-        gh auth setup-git
+gh auth login
+gh auth setup-git
 
-        git clone '$REPO_URL' '$REPO_DIR'
-        cd '$REPO_DIR'
+git clone '$REPO_URL' '$REPO_DIR'
+cd '$REPO_DIR'
 
-        git config user.name '$GIT_NAME'
-        git config user.email '$GIT_EMAIL'
+git config user.name '$GIT_NAME'
+git config user.email '$GIT_EMAIL'
 
-        echo
-        echo '[gtfs-dev] Ready.'
-        echo 'Repo: /workspace/$REPO_DIR'
-        echo 'Docker socket mounted.'
-        echo 'Exit shell to delete the container and checkout.'
-        echo
+cat >> /root/.bashrc <<'BASHRC'
+safe_exit() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo
+            echo \"[gtfs-dev] WARNING: uncommitted git changes detected.\"
+            echo
+            git status --short
+            echo
+            echo \"Commit/stash/discard changes before exiting.\"
+            echo \"Use 'exit!' to force exit.\"
+            return 1
+        fi
+    fi
 
-	cat >> /root/.bashrc <<'EOF'
+    builtin exit
+}
 
-        safe_exit() {
-            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                if ! git diff --quiet || ! git diff --cached --quiet; then
-                    echo
-                    echo "[gtfs-dev] WARNING: uncommitted git changes detected."
-                    echo
-                    git status --short
-                    echo
-                    echo "Commit/stash/discard changes before exiting."
-                    echo "Use 'exit!' to force exit."
-                    return 1
-                fi
-            fi
-        
-            builtin exit
-        }
-        
-        force_exit() {
-            builtin exit
-        }
-        
-        alias exit='safe_exit'
-        alias logout='safe_exit'
-        alias exit!='force_exit'
-        
-        EOF
+force_exit() {
+    builtin exit
+}
 
-        exec bash -i
-    "
+alias exit='safe_exit'
+alias logout='safe_exit'
+alias exit!='force_exit'
+BASHRC
+
+echo
+echo '[gtfs-dev] Ready.'
+echo 'Repo: /workspace/$REPO_DIR'
+echo 'Docker socket mounted.'
+echo 'Exit shell to delete the container and checkout.'
+echo
+
+exec bash -i
+"
 
 rm -rf "$HOST_WORKDIR"
 echo "[gtfs-dev] Directory cleaned. Done."
