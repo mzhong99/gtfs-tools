@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y \
     git \
     gh \
     vim \
+    make \
+    tmux \
     bash \
     && rm -rf /var/lib/apt/lists/*
 
