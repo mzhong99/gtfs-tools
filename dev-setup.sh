@@ -129,6 +129,7 @@ CONTAINER_SCRIPT
 
 docker run --rm -it \
     --name gtfs-ephemeral-dev \
+    --add-host=host.docker.internal:host-gateway \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:$HOST_WORKDIR" \
