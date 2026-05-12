@@ -114,7 +114,6 @@ force_exit() {
 alias exit='safe_exit'
 alias logout='safe_exit'
 alias exit!='force_exit'
-export DB_HOST=host.docker.internal
 BASHRC
 
 echo
@@ -129,7 +128,7 @@ CONTAINER_SCRIPT
 
 docker run --rm -it \
     --name gtfs-ephemeral-dev \
-    --add-host=host.docker.internal:host-gateway \
+    --network host \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:$HOST_WORKDIR" \
