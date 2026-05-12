@@ -121,14 +121,15 @@ docker run --rm -it \
     --name gtfs-ephemeral-dev \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
-    -v "$HOST_WORKDIR:/workspace" \
+    -v "$HOST_WORKDIR:$HOST_WORKDIR" \
+    -w "$HOST_WORKDIR" \
     -e HOST_WORKDIR="$HOST_WORKDIR" \
     -e REPO_URL="$REPO_URL" \
     -e REPO_DIR="$REPO_DIR" \
     -e GIT_NAME="$GIT_NAME" \
     -e GIT_EMAIL="$GIT_EMAIL" \
     "$IMAGE" \
-    bash /workspace/container-setup.sh
+    bash "$HOST_WORKDIR/container-setup.sh"
 
 rm -f "$CONTAINER_SETUP"
 echo "[gtfs-dev] Directory cleaned. Done."
