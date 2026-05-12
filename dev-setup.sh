@@ -27,7 +27,11 @@ RUN apt-get update && apt-get install -y \
     make \
     tmux \
     bash \
+    golang-go \
     && rm -rf /var/lib/apt/lists/*
+
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+ENV PATH="/root/go/bin:${PATH}"
 
 RUN install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg \
