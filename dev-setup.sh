@@ -122,14 +122,13 @@ docker run --rm -it \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:/workspace" \
-    -v "$CONTAINER_SETUP:/tmp/container-setup.sh:ro" \
     -e HOST_WORKDIR="$HOST_WORKDIR" \
     -e REPO_URL="$REPO_URL" \
     -e REPO_DIR="$REPO_DIR" \
     -e GIT_NAME="$GIT_NAME" \
     -e GIT_EMAIL="$GIT_EMAIL" \
     "$IMAGE" \
-    bash /tmp/container-setup.sh
+    bash /workspace/container-setup.sh
 
 rm -f "$CONTAINER_SETUP"
 echo "[gtfs-dev] Directory cleaned. Done."
