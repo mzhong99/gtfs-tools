@@ -50,18 +50,8 @@ EOF
 
 echo "[gtfs-dev] Starting disposable container..."
 
-docker run --rm -i \
-    --name gtfs-ephemeral-dev \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$HOME/.vimrc:/root/.vimrc:ro" \
-    -v "$HOST_WORKDIR:/workspace" \
-    -e HOST_WORKDIR="$HOST_WORKDIR" \
-    -e REPO_URL="$REPO_URL" \
-    -e REPO_DIR="$REPO_DIR" \
-    -e GIT_NAME="$GIT_NAME" \
-    -e GIT_EMAIL="$GIT_EMAIL" \
-    "$IMAGE" \
-    bash -s <<'CONTAINER_SCRIPT'
+CONTAINER_SETUP="$(mktemp)"
+cat > "$CONTAINER_SETUP" <<'CONTAINER_SCRIPT'
 set -euo pipefail
 
 gh auth login
@@ -125,6 +115,22 @@ echo
 
 exec bash -i
 CONTAINER_SCRIPT
+
+docker run --rm -it \
+    --name gtfs-ephemeral-dev \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$HOME/.vimrc:/root/.vimrc:ro" \
+    -v "$HOST_WORKDIR:/workspace" \
+    -v "$CONTAINER_SETUP:/tmp/container-setup.sh:ro" \
+    -e HOST_WORKDIR="$HOST_WORKDIR" \
+    -e REPO_URL="$REPO_URL" \
+    -e REPO_DIR="$REPO_DIR" \
+    -e GIT_NAME="$GIT_NAME" \
+    -e GIT_EMAIL="$GIT_EMAIL" \
+    "$IMAGE" \
+    bash /tmp/container-setup.sh
+
+rm -f "$CONTAINER_SETUP"
 
 rm -rf "$HOST_WORKDIR"
 echo "[gtfs-dev] Directory cleaned. Done."
