@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
+RUN echo 'export PS1="[dev] \u@\h:\w\\$ "' >> /root/.bashrc
 EOF
 
 echo "[gtfs-dev] Starting disposable container..."

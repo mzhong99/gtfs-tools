@@ -20,6 +20,7 @@ BINS := \
 all: build
 
 dev-env:
+	$(COMPOSE) --profile dev build dev
 	$(COMPOSE) --profile dev run --rm dev
 
 build:
