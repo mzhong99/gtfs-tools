@@ -14,7 +14,7 @@ docker build -t "$IMAGE" - <<'EOF'
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
-    bash ca-certificates curl docker.io git gh vim tmux make docker-compose-plugin \
+    bash ca-certificates curl docker.io git gh vim tmux make docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
