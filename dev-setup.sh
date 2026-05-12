@@ -52,6 +52,7 @@ echo "[gtfs-dev] Starting disposable container..."
 docker run --rm -it \
     --name gtfs-ephemeral-dev \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:/workspace" \
     "$IMAGE" \
     bash -lc "
