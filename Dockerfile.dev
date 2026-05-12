@@ -49,15 +49,17 @@ RUN mkdir -p /root/.vim/pack/plugins/start \
 
 RUN mkdir -p /root/.vim/ftdetect /root/.vim/after/plugin
 
-RUN cat > /root/.vimrc <<'EOF'
-if filereadable('/root/.vimrc.host')
-    source /root/.vimrc.host
-endif
+RUN printf '%s\n' \
+'if filereadable("/root/.vimrc.host")' \
+'    source /root/.vimrc.host' \
+'endif' \
+'' \
+'set nocompatible' \
+'filetype plugin indent on' \
+'syntax enable' \
+> /root/.vimrc
 
-set nocompatible
-filetype plugin indent on
-syntax enable
-EOF
+RUN test -s /root/.vimrc && cat /root/.vimrc
 
 RUN cat > /root/.vim/ftdetect/go.vim <<'EOF'
 autocmd BufRead,BufNewFile *.go setfiletype go
