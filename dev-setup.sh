@@ -9,6 +9,7 @@ GIT_NAME="Matthew Zhong"
 GIT_EMAIL="matthewzhong@logmethods.com"
 
 HOST_WORKDIR="$(mktemp -d)"
+trap 'rm -rf "$HOST_WORKDIR"' EXIT
 
 echo "[gtfs-dev] Building ephemeral dev image..."
 
@@ -50,7 +51,7 @@ EOF
 
 echo "[gtfs-dev] Starting disposable container..."
 
-CONTAINER_SETUP="$(mktemp)"
+CONTAINER_SETUP="$HOST_WORKDIR/container-setup.sh"
 cat > "$CONTAINER_SETUP" <<'CONTAINER_SCRIPT'
 set -euo pipefail
 
@@ -131,6 +132,4 @@ docker run --rm -it \
     bash /tmp/container-setup.sh
 
 rm -f "$CONTAINER_SETUP"
-
-rm -rf "$HOST_WORKDIR"
 echo "[gtfs-dev] Directory cleaned. Done."
