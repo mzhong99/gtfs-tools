@@ -44,5 +44,36 @@ RUN curl -fLo /root/.vim/autoload/plug.vim --create-dirs \
 
 ENV PATH="/go/bin:${PATH}"
 
+RUN mkdir -p /root/.vim/pack/plugins/start \
+    && git clone --depth=1 https://github.com/fatih/vim-go.git /root/.vim/pack/plugins/start/vim-go
+
+RUN mkdir -p /root/.vim/ftdetect /root/.vim/after/plugin
+
+RUN cat > /root/.vimrc <<'EOF'
+if filereadable('/root/.vimrc.host')
+    source /root/.vimrc.host
+endif
+
+set nocompatible
+filetype plugin indent on
+syntax enable
+EOF
+
+RUN cat > /root/.vim/ftdetect/go.vim <<'EOF'
+autocmd BufRead,BufNewFile *.go setfiletype go
+EOF
+
+RUN cat > /root/.vim/after/plugin/gtfs-go.vim <<'EOF'
+filetype plugin indent on
+syntax enable
+
+let g:go_fmt_command = "gofmt"
+let g:go_def_mode = "gopls"
+let g:go_info_mode = "gopls"
+let g:go_gopls_enabled = 1
+let g:go_doc_keywordprg_enabled = 0
+let g:go_metalinter_enabled = []
+EOF
+
 WORKDIR /workspace
 RUN echo 'export PS1="[build] \u@\h:\w\\$ "' >> /root/.bashrc

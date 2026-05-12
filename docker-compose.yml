@@ -6,14 +6,15 @@ services:
       dockerfile: Dockerfile.dev
     container_name: gtfs-dev
     profiles: ["dev"]
-    working_dir: /workspace
+    working_dir: ${HOST_WORKDIR}/gtfs-tools
+    network_mode: host
     stdin_open: true
     tty: true
     command: ["bash"]
     volumes:
       - ${HOST_WORKDIR}/gtfs-tools:${HOST_WORKDIR}/gtfs-tools
-      - /var/run/docker.sock:/var/run/docker.sock
       - ${HOST_HOME}/.vimrc:/root/.vimrc.host:ro
+      - /var/run/docker.sock:/var/run/docker.sock
   postgres:
     image: postgres:16-alpine
     container_name: gtfs-postgres
