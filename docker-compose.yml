@@ -1,4 +1,18 @@
 services:
+  dev:
+    image: gtfs-dev:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: gtfs-dev
+    profiles: ["dev"]
+    working_dir: /workspace
+    stdio_open: true
+    tty: true
+    command: ["bash"]
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
   postgres:
     image: postgres:16-alpine
     container_name: gtfs-postgres
