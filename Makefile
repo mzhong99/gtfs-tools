@@ -19,6 +19,9 @@ BINS := \
 
 all: build
 
+dev-env:
+	$(COMPOSE) --profile dev run --rm dev
+
 build:
 	@mkdir -p bin
 	@for b in $(BINS); do \
