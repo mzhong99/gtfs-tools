@@ -13,7 +13,6 @@ func NewPlaybackCmd(app *GtfsCtlApp) *cobra.Command {
 		Use:   "playback <recording_name>",
 		Short: "Playback a selected recording, providing feed recordings for data ingest",
 		RunE:  app.DoPlayback,
-		Args:  cobra.ExactArgs(1),
 	}
 
 	cmd.Flags().Bool("delays", false, "Respect recorded real-time delays")
@@ -34,6 +33,10 @@ func (app *GtfsCtlApp) DoPlayback(cmd *cobra.Command, args []string) error {
 	}
 	if list {
 		return app.listRecordings()
+	}
+
+	if len(args) != 1 {
+		return fmt.Errorf("Requires exactly one recording_name")
 	}
 
 	delays, err := cmd.Flags().GetBool("delays")
