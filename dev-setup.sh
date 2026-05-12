@@ -27,11 +27,16 @@ RUN apt-get update && apt-get install -y \
     make \
     tmux \
     bash \
-    golang-go \
     && rm -rf /var/lib/apt/lists/*
 
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
-ENV PATH="/root/go/bin:${PATH}"
+ARG MIGRATE_VERSION=v4.18.3
+RUN curl -L \
+    "https://github.com/golang-migrate/migrate/releases/download/${MIGRATE_VERSION}/migrate.linux-amd64.deb" \
+    -o /tmp/migrate.deb \
+    && apt-get update \
+    && apt-get install -y /tmp/migrate.deb \
+    && rm -f /tmp/migrate.deb \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg \
