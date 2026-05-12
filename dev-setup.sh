@@ -72,15 +72,34 @@ git config user.email '$GIT_EMAIL'
 cat >> /root/.bashrc <<'BASHRC'
 safe_exit() {
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+
+        # Uncommitted changes
         if ! git diff --quiet || ! git diff --cached --quiet; then
             echo
-            echo \"[gtfs-dev] WARNING: uncommitted git changes detected.\"
+            echo "[gtfs-dev] WARNING: uncommitted git changes detected."
             echo
             git status --short
             echo
-            echo \"Commit/stash/discard changes before exiting.\"
-            echo \"Use 'exit!' to force exit.\"
+            echo "Commit/stash/discard changes before exiting."
+            echo "Use 'exit!' to force exit."
             return 1
+        fi
+
+        # Unpushed commits
+        if git rev-parse @{u} >/dev/null 2>&1; then
+            LOCAL="$(git rev-parse @)"
+            REMOTE="$(git rev-parse @{u})"
+
+            if [ "$LOCAL" != "$REMOTE" ]; then
+                echo
+                echo "[gtfs-dev] WARNING: unpushed commits detected."
+                echo
+                git log --oneline @{u}..HEAD
+                echo
+                echo "Push commits before exiting."
+                echo "Use 'exit!' to force exit."
+                return 1
+            fi
         fi
     fi
 
