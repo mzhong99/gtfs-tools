@@ -54,6 +54,7 @@ docker run --rm -it \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:/workspace" \
+    -e HOST_WORKDIR="$HOST_WORKDIR" \
     "$IMAGE" \
   bash -lc "
 set -euo pipefail
