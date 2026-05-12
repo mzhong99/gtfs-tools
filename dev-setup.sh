@@ -50,30 +50,32 @@ EOF
 
 echo "[gtfs-dev] Starting disposable container..."
 
-docker run --rm -it \
+docker run --rm -i \
     --name gtfs-ephemeral-dev \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$HOME/.vimrc:/root/.vimrc:ro" \
     -v "$HOST_WORKDIR:/workspace" \
     -e HOST_WORKDIR="$HOST_WORKDIR" \
+    -e REPO_URL="$REPO_URL" \
+    -e REPO_DIR="$REPO_DIR" \
+    -e GIT_NAME="$GIT_NAME" \
+    -e GIT_EMAIL="$GIT_EMAIL" \
     "$IMAGE" \
-  bash -lc "
+    bash -s <<'CONTAINER_SCRIPT'
 set -euo pipefail
 
 gh auth login
 gh auth setup-git
 
-git clone '$REPO_URL' '$REPO_DIR'
-cd '$REPO_DIR'
+git clone "$REPO_URL" "$REPO_DIR"
+cd "$REPO_DIR"
 
-git config user.name '$GIT_NAME'
-git config user.email '$GIT_EMAIL'
+git config user.name "$GIT_NAME"
+git config user.email "$GIT_EMAIL"
 
 cat >> /root/.bashrc <<'BASHRC'
 safe_exit() {
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-
-        # Uncommitted changes
         if ! git diff --quiet || ! git diff --cached --quiet; then
             echo
             echo "[gtfs-dev] WARNING: uncommitted git changes detected."
@@ -85,12 +87,11 @@ safe_exit() {
             return 1
         fi
 
-        # Unpushed commits
         if git rev-parse @{u} >/dev/null 2>&1; then
-            LOCAL="\$(git rev-parse @)"
-            REMOTE="\$(git rev-parse @{u})"
+            LOCAL="$(git rev-parse @)"
+            REMOTE="$(git rev-parse @{u})"
 
-            if [ "\$LOCAL" != "\$REMOTE" ]; then
+            if [ "$LOCAL" != "$REMOTE" ]; then
                 echo
                 echo "[gtfs-dev] WARNING: unpushed commits detected."
                 echo
@@ -117,13 +118,13 @@ BASHRC
 
 echo
 echo '[gtfs-dev] Ready.'
-echo 'Repo: /workspace/$REPO_DIR'
+echo "Repo: /workspace/$REPO_DIR"
 echo 'Docker socket mounted.'
 echo 'Exit shell to delete the container and checkout.'
 echo
 
 exec bash -i
-"
+CONTAINER_SCRIPT
 
 rm -rf "$HOST_WORKDIR"
 echo "[gtfs-dev] Directory cleaned. Done."
