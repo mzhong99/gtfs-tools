@@ -7,7 +7,7 @@ services:
     container_name: gtfs-dev
     profiles: ["dev"]
     working_dir: /workspace
-    stdio_open: true
+    stdin_open: true
     tty: true
     command: ["bash"]
     volumes:
