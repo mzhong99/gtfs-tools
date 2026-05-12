@@ -138,6 +138,7 @@ docker run --rm -it \
     -e REPO_DIR="$REPO_DIR" \
     -e GIT_NAME="$GIT_NAME" \
     -e GIT_EMAIL="$GIT_EMAIL" \
+    -e HOST_HOME="$HOME" \
     "$IMAGE" \
     bash "$HOST_WORKDIR/container-setup.sh"
 

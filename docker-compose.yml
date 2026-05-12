@@ -11,8 +11,9 @@ services:
     tty: true
     command: ["bash"]
     volumes:
-      - ${HOST_WORKDIR}/gtfs-tools:/workspace
+      - ${HOST_WORKDIR}/gtfs-tools:${HOST_WORKDIR}/gtfs-tools
       - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOST_HOME}/.vimrc:/root/.vimrc.host:ro
   postgres:
     image: postgres:16-alpine
     container_name: gtfs-postgres

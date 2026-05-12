@@ -63,5 +63,7 @@ let g:go_doc_keywordprg_enabled = 0
 let g:go_metalinter_enabled = []
 EOF
 
+RUN vim +'PlugInstall --sync' +qall
+
 WORKDIR /workspace
 RUN echo 'export PS1="[build] \u@\h:\w\\$ "' >> /root/.bashrc
