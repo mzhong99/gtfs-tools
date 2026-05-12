@@ -14,8 +14,15 @@ LDFLAGS := \
 BINS := \
     gtfs-ingest \
     gtfs-rt-ingest \
-	gtfs-ctl \
+    gtfs-ctl \
     gtfs-web
+
+DB_HOST ?= localhost
+DB_PORT ?= 5432
+DB_USER ?= gtfs
+DB_PASS ?= gtfs_dev_password
+DB_NAME ?= gtfs_db
+DB_URL := postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
 all: build
 
@@ -72,7 +79,7 @@ db-reset:
 	@echo "Database reset complete"
 
 db-migrate-up:
-	migrate -verbose -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" up
+	migrate -verbose -path migrations -database "$(DB_URL)" up
 
 db-migrate-status:
-	migrate -path migrations -database "postgres://gtfs:gtfs_dev_password@localhost:5432/gtfs_db?sslmode=disable" version
+	migrate -path migrations -database "$(DB_URL)" version

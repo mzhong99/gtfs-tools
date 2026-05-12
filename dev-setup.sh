@@ -114,6 +114,7 @@ force_exit() {
 alias exit='safe_exit'
 alias logout='safe_exit'
 alias exit!='force_exit'
+export DB_HOST=host.docker.internal
 BASHRC
 
 echo
