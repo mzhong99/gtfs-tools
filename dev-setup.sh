@@ -8,6 +8,8 @@ REPO_DIR="gtfs-tools"
 GIT_NAME="Matthew Zhong"
 GIT_EMAIL="matthewzhong@logmethods.com"
 
+HOST_WORKDIR="$(mktemp -d)"
+
 echo "[gtfs-dev] Building ephemeral dev image..."
 
 docker build -t "$IMAGE" - <<'EOF'
@@ -50,6 +52,7 @@ echo "[gtfs-dev] Starting disposable container..."
 docker run --rm -it \
     --name gtfs-ephemeral-dev \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$HOST_WORKDIR:/workspace" \
     "$IMAGE" \
     bash -lc "
         set -euo pipefail
@@ -70,5 +73,37 @@ docker run --rm -it \
         echo 'Exit shell to delete the container and checkout.'
         echo
 
+	cat >> /root/.bashrc <<'EOF'
+
+        safe_exit() {
+            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+                if ! git diff --quiet || ! git diff --cached --quiet; then
+                    echo
+                    echo "[gtfs-dev] WARNING: uncommitted git changes detected."
+                    echo
+                    git status --short
+                    echo
+                    echo "Commit/stash/discard changes before exiting."
+                    echo "Use 'exit!' to force exit."
+                    return 1
+                fi
+            fi
+        
+            builtin exit
+        }
+        
+        force_exit() {
+            builtin exit
+        }
+        
+        alias exit='safe_exit'
+        alias logout='safe_exit'
+        alias exit!='force_exit'
+        
+        EOF
+
         exec bash -i
     "
+
+rm -rf "$HOST_WORKDIR"
+echo "[gtfs-dev] Directory cleaned. Done."
