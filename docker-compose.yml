@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: gtfs-dev
+    container_name: devcontainer
     profiles: ["dev"]
     working_dir: ${HOST_WORKDIR}/gtfs-tools
     network_mode: host

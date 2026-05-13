@@ -26,7 +26,7 @@ DB_URL := postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslm
 
 all: build
 
-dev-env:
+devcontainer:
 	$(COMPOSE) --profile dev build dev
 	$(COMPOSE) --profile dev run --rm dev
 
